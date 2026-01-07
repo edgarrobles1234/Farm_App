@@ -1,4 +1,5 @@
 // screens/LoginScreen.tsx
+import ArtLogin from "@/assets/images/art_login.svg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Typography } from "@/components/ui/typography";
@@ -32,11 +33,16 @@ export default function Login() {
     <>
     <Stack.Screen options={{ headerShown: false }} />
     <SafeAreaView style={styles.container}>
+
       <View style={styles.content}>
+        <View style={styles.illustrationWrapper}>
+          <ArtLogin width={350.44} height={282.48} />
+        </View>
+
         {/* Title */}
-        <Typography.H1 style={styles.title}>
+        <Typography.H2 style={styles.title}>
           Let's sign you in
-        </Typography.H1>
+        </Typography.H2>
         
         <Typography.H5 style={styles.subtitle} color={theme.neutral[500]}>
           Easily find farms near you with built in grocery lists, recipes, and awesome food!
@@ -119,7 +125,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing['2xl'],
+    paddingTop: theme.spacing.xs,
   },
   title: {
     textAlign: 'center',
@@ -132,7 +138,7 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   loginButton: {
     marginBottom: theme.spacing.md,
@@ -169,5 +175,9 @@ const styles = StyleSheet.create({
   },
   googleIcon: {
   marginRight: theme.spacing.sm,
+  },
+  illustrationWrapper: {
+  alignItems: 'center',
+  marginBottom: theme.spacing.xs,
   },
 });
