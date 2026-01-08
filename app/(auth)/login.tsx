@@ -7,6 +7,7 @@ import { theme } from "@/constants/theme";
 import { AntDesign } from '@expo/vector-icons';
 import { router, Stack } from "expo-router";
 import React, { useState } from "react";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Login() {
@@ -40,13 +41,21 @@ export default function Login() {
         </View>
 
         {/* Title */}
-        <Typography.H2 style={styles.title}>
-          Let's sign you in
-        </Typography.H2>
-        
+        <Animated.View
+          entering={FadeInUp.delay(300)}
+        >
+          <Typography.H2 style={styles.title}>
+            Let's sign you in
+          </Typography.H2>
+        </Animated.View>
+
+        <Animated.View
+          entering={FadeInUp.delay(500)}
+        >
         <Typography.H5 style={styles.subtitle} color={theme.neutral[500]}>
           Easily find farms near you with built in grocery lists, recipes, and awesome food!
         </Typography.H5>
+        </Animated.View>
 
         {/* Form */}
         <View style={styles.form}>
@@ -104,7 +113,7 @@ export default function Login() {
           <Typography.H5 color={theme.neutral[600]}>
             Don't have an account?{' '}
           </Typography.H5>
-          <TouchableOpacity onPress={() => router.push("/signup")}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
             <Typography.H5 color={theme.brand.primary} style={styles.link}>
               Create An account
             </Typography.H5>
@@ -166,18 +175,18 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeights.semibold,
   },
   googleButton: {
-  marginBottom: theme.spacing.lg,
-  paddingVertical: theme.spacing.md,
-  borderRadius: theme.borderRadius.lg,
-  borderWidth: 1,
-  borderColor: theme.neutral[300],
-  backgroundColor: theme.neutral.white,
+    marginBottom: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.neutral[300],
+    backgroundColor: theme.neutral.white,
   },
   googleIcon: {
-  marginRight: theme.spacing.sm,
+    marginRight: theme.spacing.sm,
   },
   illustrationWrapper: {
-  alignItems: 'center',
-  marginBottom: theme.spacing.xs,
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
   },
 });
