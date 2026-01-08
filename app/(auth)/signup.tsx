@@ -1,4 +1,4 @@
-// screens/LoginScreen.tsx
+// screens/SignUpScreen.tsx
 import ArtSignup from "@/assets/images/art_signup.svg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,8 @@ import { theme } from "@/constants/theme";
 import { AntDesign } from '@expo/vector-icons';
 import { router, Stack } from "expo-router";
 import React, { useState } from "react";
+import { Keyboard, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
@@ -16,15 +16,16 @@ export default function SignUp() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
 
-  const handleLogin = () => {
-    // temporary logic (no backend yet)
-    if (!email || !password) {
+  const handleSignUp = () => {
+    Keyboard.dismiss();
+    
+    if (!email || !password || !name || !username) {
       alert("Please fill in all fields");
       return;
     }
 
     // later: real auth
-    router.replace("/");
+    router.replace("/(tabs)");
   };
 
   const handleGoogleSignIn = () => {
@@ -34,108 +35,115 @@ export default function SignUp() {
 
   return (
     <>
-    <Stack.Screen options={{ headerShown: false }} />
-    <SafeAreaView style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <View style={styles.illustrationWrapper}>
+              <ArtSignup width={320} height={180}/>
+            </View>
 
-      <View style={styles.content}>
-        <View style={styles.illustrationWrapper}>
-          <ArtSignup width={412.06} height={225.48}/>
-        </View>
-
-        {/* Title */}
-        <Animated.View
-                  entering={FadeInUp.delay(300)}
-        >
-        <Typography.H2 style={styles.title}>
-          Create An Account
-        </Typography.H2>
-        </Animated.View>
-        
-        <Animated.View
-            entering={FadeInUp.delay(500)}
-        >
-        <Typography.H5 style={styles.subtitle} color={theme.neutral[500]}>
-          Easily find farms near you with built in grocery lists, recipes, and awesome food!
-        </Typography.H5>
-        </Animated.View>
-
-        {/* Form */}
-        <View style={styles.form}>
-            <Input
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-            <Input
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-            <Input 
-            placeholder="Full Name"
-            value={name}
-            onChangeText={setName}
-          />
+            {/* Title */}
+            <Animated.View entering={FadeInUp.delay(300)}>
+              <Typography.H2 style={styles.title}>
+                Create An Account
+              </Typography.H2>
+            </Animated.View>
             
-            <Input
-            placeholder="Username"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-          />
-        </View>
+            <Animated.View entering={FadeInUp.delay(500)}>
+              <Typography.H5 style={styles.subtitle} color={theme.neutral[500]}>
+                Easily find farms near you with built in grocery lists, recipes, and awesome food!
+              </Typography.H5>
+            </Animated.View>
 
-        {/* Login Button */}
-        <Button
-          variant="primary"
-          onPress={handleLogin}
-          style={styles.loginButton}
-        >
-          Sign Up
-        </Button>
+            {/* Form */}
+            <View style={styles.form}>
+              <Input
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                returnKeyType="next"
+              />
 
-        {/* Divider */}
-        <Typography.H5 style={styles.divider}>
-          Or
-        </Typography.H5>
+              <Input
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                returnKeyType="next"
+              />
 
-        {/* Google Sign In */}
-        <TouchableOpacity
-        onPress={handleGoogleSignIn}
-        style={styles.googleButton}
-        activeOpacity={0.8}
-      >
-        <View style={styles.googleButtonContent}>
-          <AntDesign
-            name="google"
-            size={20}
-            color={theme.neutral[700]}
-            style={styles.googleIcon}
-          />
-          <Text style={styles.googleButtonText}>
-            Sign up with Google
-          </Text>
-        </View>
-      </TouchableOpacity>
+              <Input 
+                placeholder="Full Name"
+                value={name}
+                onChangeText={setName}
+                returnKeyType="next"
+              />
+              
+              <Input
+                placeholder="Username"
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                returnKeyType="done"
+                onSubmitEditing={handleSignUp}
+              />
+            </View>
 
-        {/* Sign Up Link */}
-        <View style={styles.footer}>
-          <Typography.H5 color={theme.neutral[600]}>
-            Already have an account?{' '}
-          </Typography.H5>
-          <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-            <Typography.H5 color={theme.brand.primary} style={styles.link}>
-              Log in
+            {/* Sign Up Button */}
+            <Button
+              variant="primary"
+              onPress={handleSignUp}
+              style={styles.signUpButton}
+            >
+              Sign Up
+            </Button>
+
+            {/* Divider */}
+            <Typography.H5 style={styles.divider}>
+              Or
             </Typography.H5>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </SafeAreaView>
+
+            {/* Google Sign In */}
+            <TouchableOpacity
+              onPress={handleGoogleSignIn}
+              style={styles.googleButton}
+              activeOpacity={0.8}
+            >
+              <View style={styles.googleButtonContent}>
+                <AntDesign
+                  name="google"
+                  size={20}
+                  color={theme.neutral[700]}
+                  style={styles.googleIcon}
+                />
+                <Text style={styles.googleButtonText}>
+                  Sign up with Google
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Login Link */}
+            <View style={styles.footer}>
+              <Typography.H5 color={theme.neutral[600]}>
+                Already have an account?{' '}
+              </Typography.H5>
+              <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+                <Typography.H5 color={theme.brand.primary} style={styles.link}>
+                  Log in
+                </Typography.H5>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </SafeAreaView>
     </>
   );
 }
@@ -145,12 +153,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.neutral.white,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
   },
   title: {
     textAlign: 'center',
@@ -158,15 +165,15 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     textAlign: 'center',
-    marginBottom: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
     fontSize: theme.typography.fontSizes.h5,
   },
   form: {
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },
-  loginButton: {
+  signUpButton: {
     marginBottom: theme.spacing.sm,
   },
   divider: {
@@ -187,23 +194,24 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    marginTop: theme.spacing.xs,
   },
   link: {
     fontWeight: theme.typography.fontWeights.semibold,
   },
   googleButton: {
-  marginBottom: theme.spacing.md,
-  paddingVertical: theme.spacing.md,
-  borderRadius: theme.borderRadius.lg,
-  borderWidth: 1,
-  borderColor: theme.neutral[300],
-  backgroundColor: theme.neutral.white,
+    marginBottom: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.neutral[300],
+    backgroundColor: theme.neutral.white,
   },
   googleIcon: {
-  marginRight: theme.spacing.sm,
+    marginRight: theme.spacing.sm,
   },
   illustrationWrapper: {
-  alignItems: 'center',
-  marginBottom: theme.spacing.xs,
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
   },
 });
