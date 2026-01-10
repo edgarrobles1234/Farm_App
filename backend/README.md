@@ -25,3 +25,7 @@ Fill in `SUPABASE_URL` and `SUPABASE_KEY`. (Dont actually push yet need to hide 
 ```bash
 uvicorn app.main:app --reload
 ```
+or if it says port is in use
+```bash
+uvicorn app.main:app --reload --port 8001
+```
