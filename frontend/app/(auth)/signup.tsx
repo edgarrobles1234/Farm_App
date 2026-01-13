@@ -7,8 +7,9 @@ import { theme } from "@/constants/theme";
 import { AntDesign } from '@expo/vector-icons';
 import { router, Stack } from "expo-router";
 import React, { useState } from "react";
-import { Keyboard, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { Keyboard, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
