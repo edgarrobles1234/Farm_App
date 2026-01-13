@@ -8,7 +8,6 @@ export default function GroceryListScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title">Grocery List</ThemedText>
-      {/* Add your search content here */}
     </ThemedView>
   );
 }

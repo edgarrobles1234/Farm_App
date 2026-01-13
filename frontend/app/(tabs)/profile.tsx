@@ -8,7 +8,6 @@ export default function ProfileScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title">Profile</ThemedText>
-      {/* Add your search content here */}
     </ThemedView>
   );
 }

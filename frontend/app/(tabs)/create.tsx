@@ -8,7 +8,6 @@ export default function CreateScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title">Create</ThemedText>
-      {/* Add your search content here */}
     </ThemedView>
   );
 }
