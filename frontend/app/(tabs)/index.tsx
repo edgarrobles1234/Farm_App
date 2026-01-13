@@ -1,14 +1,22 @@
 import { Image } from 'expo-image';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import React from 'react';
+import { router } from 'expo-router';
 
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import { Fonts, theme } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
 
 export default function HomeScreen() {
+  const handleLogout = () => {
+    // TODO: Clear auth tokens, AsyncStorage, etc.
+    // For now, just navigate back to login
+    router.replace('/(auth)/login');
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -45,6 +53,15 @@ export default function HomeScreen() {
           <ThemedText type="defaultSemiBold">Quick Actions</ThemedText>
           <ThemedText>Add your main features here</ThemedText>
         </ThemedView>
+
+        {/* Logout Button */}
+        <Button
+          variant="primary"
+          onPress={handleLogout}
+          style={styles.logoutButton}
+        >
+          Log out
+        </Button>
       </ThemedView>
     </ParallaxScrollView>
   );
@@ -73,5 +90,8 @@ const styles = StyleSheet.create({
   section: {
     gap: 8,
     marginTop: 12,
+  },
+  logoutButton: {
+    marginTop: 24,
   },
 });
