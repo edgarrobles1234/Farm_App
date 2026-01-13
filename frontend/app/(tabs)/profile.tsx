@@ -1,13 +1,18 @@
 // (tabs)/profile.tsx
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import React from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function ProfileScreen() {
+  const { colors } = useTheme();
+
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">Profile</ThemedText>
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ThemedText type="title" style={{ color: colors.text.primary }}>
+        Profile
+      </ThemedText>
     </ThemedView>
   );
 }

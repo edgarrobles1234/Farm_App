@@ -1,13 +1,18 @@
 // (tabs)/create.tsx
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import React from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function CreateScreen() {
+  const { colors } = useTheme();
+
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">Create</ThemedText>
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ThemedText type="title" style={{ color: colors.text.primary }}>
+        Create
+      </ThemedText>
     </ThemedView>
   );
 }
