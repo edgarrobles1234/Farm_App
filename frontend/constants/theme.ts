@@ -1,9 +1,6 @@
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
-// Your brand colors
+// Your brand colors (these stay the same in both themes)
 export const BrandColors = {
   red: '#E14242',
   primary: '#FE9801',
@@ -29,7 +26,7 @@ export const NeutralColors = {
   black: '#000000',
 };
 
-// Semantic colors
+// Semantic colors (same in both themes)
 export const SemanticColors = {
   success: BrandColors.tertiary,
   error: BrandColors.red,
@@ -37,23 +34,59 @@ export const SemanticColors = {
   info: BrandColors.secondary,
 };
 
-// Original color scheme (keep for compatibility)
-export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+// Light theme colors
+const lightTheme = {
+  background: NeutralColors.white,
+  surface: NeutralColors.white,
+  card: NeutralColors.white,
+  text: {
+    primary: '#11181C',
+    secondary: NeutralColors[600],
+    tertiary: NeutralColors[500],
+    disabled: NeutralColors[400],
   },
-  dark: {
+  border: {
+    light: NeutralColors[200],
+    default: NeutralColors[300],
+    strong: NeutralColors[400],
+  },
+  icon: {
+    default: '#687076',
+    active: BrandColors.primary,
+  },
+  input: {
+    background: NeutralColors.white,
+    border: NeutralColors[300],
+    placeholder: NeutralColors[400],
+    text: '#11181C',
+  },
+};
+
+// Dark theme colors
+const darkTheme = {
+  background: '#151718',
+  surface: NeutralColors[900],
+  card: NeutralColors[800],
+  text: {
+    primary: '#ECEDEE',
+    secondary: NeutralColors[300],
+    tertiary: NeutralColors[400],
+    disabled: NeutralColors[600],
+  },
+  border: {
+    light: NeutralColors[800],
+    default: NeutralColors[700],
+    strong: NeutralColors[600],
+  },
+  icon: {
+    default: '#9BA1A6',
+    active: BrandColors.primary,
+  },
+  input: {
+    background: NeutralColors[800],
+    border: NeutralColors[700],
+    placeholder: NeutralColors[500],
     text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
   },
 };
 
@@ -78,7 +111,7 @@ export const Fonts = Platform.select({
   },
 });
 
-// Typography scale (matching your Figma design system)
+// Typography scale
 export const Typography = {
   fontSizes: {
     h1: 38,
@@ -95,11 +128,9 @@ export const Typography = {
     semibold: '600' as const,
     bold: '700' as const,
   },
-  // Line heights set to 'Auto' in your design, using 1.5 as default
   lineHeights: {
-    auto: 1.5, // Default for "Auto"
+    auto: 1.5,
   },
-  // Font family
   fontFamily: 'Open Sans',
 };
 
@@ -151,12 +182,13 @@ export const Shadows = {
   },
 };
 
-// Main theme object (everything in one place)
+// Main theme object
 export const theme = {
+  light: lightTheme,
+  dark: darkTheme,
   brand: BrandColors,
   neutral: NeutralColors,
   semantic: SemanticColors,
-  colors: Colors,
   fonts: Fonts,
   typography: Typography,
   spacing: Spacing,
@@ -165,3 +197,4 @@ export const theme = {
 };
 
 export type Theme = typeof theme;
+export type ThemeColors = typeof lightTheme;

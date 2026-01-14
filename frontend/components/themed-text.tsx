@@ -1,6 +1,6 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
-
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useTheme } from '@/hooks/useTheme';
+import React from 'react';
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
@@ -15,7 +15,14 @@ export function ThemedText({
   type = 'default',
   ...rest
 }: ThemedTextProps) {
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const { colors, isDark } = useTheme();
+  
+  // Use custom colors if provided, otherwise use theme colors
+  const color = lightColor || darkColor 
+    ? (isDark ? darkColor : lightColor)
+    : type === 'subtitle' 
+      ? colors.text.secondary 
+      : colors.text.primary;
 
   return (
     <Text
@@ -55,6 +62,6 @@ const styles = StyleSheet.create({
   link: {
     lineHeight: 30,
     fontSize: 16,
-    color: '#0a7ea4',
+    // Link color will come from the theme
   },
 });

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Typography } from "@/components/ui/typography";
 import { theme } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
 import { AntDesign } from '@expo/vector-icons';
 import { router, Stack } from "expo-router";
 import React, { useState } from "react";
@@ -16,6 +17,7 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
+  const { colors, isDark } = useTheme();
 
   const handleSignUp = () => {
     Keyboard.dismiss();
@@ -37,7 +39,7 @@ export default function SignUp() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView 
             contentContainerStyle={styles.scrollContent}
@@ -51,13 +53,13 @@ export default function SignUp() {
 
             {/* Title */}
             <Animated.View entering={FadeInUp.delay(300)}>
-              <Typography.H2 style={styles.title}>
+              <Typography.H2 style={[styles.title, { color: colors.text.primary }]}>
                 Create An Account
               </Typography.H2>
             </Animated.View>
             
             <Animated.View entering={FadeInUp.delay(500)}>
-              <Typography.H5 style={styles.subtitle} color={theme.neutral[500]}>
+              <Typography.H5 style={styles.subtitle} color={colors.text.secondary}>
                 Easily find farms near you with built in grocery lists, recipes, and awesome food!
               </Typography.H5>
             </Animated.View>
@@ -108,24 +110,30 @@ export default function SignUp() {
             </Button>
 
             {/* Divider */}
-            <Typography.H5 style={styles.divider}>
+            <Typography.H5 style={[styles.divider, { color: colors.text.tertiary }]}>
               Or
             </Typography.H5>
 
             {/* Google Sign In */}
             <TouchableOpacity
               onPress={handleGoogleSignIn}
-              style={styles.googleButton}
+              style={[
+                styles.googleButton,
+                {
+                  borderColor: colors.border.default,
+                  backgroundColor: colors.card,
+                }
+              ]}
               activeOpacity={0.8}
             >
               <View style={styles.googleButtonContent}>
                 <AntDesign
                   name="google"
                   size={20}
-                  color={theme.neutral[700]}
+                  color={colors.text.primary}
                   style={styles.googleIcon}
                 />
-                <Text style={styles.googleButtonText}>
+                <Text style={[styles.googleButtonText, { color: colors.text.primary }]}>
                   Sign up with Google
                 </Text>
               </View>
@@ -133,7 +141,7 @@ export default function SignUp() {
 
             {/* Login Link */}
             <View style={styles.footer}>
-              <Typography.H5 color={theme.neutral[600]}>
+              <Typography.H5 color={colors.text.secondary}>
                 Already have an account?{' '}
               </Typography.H5>
               <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
@@ -152,7 +160,6 @@ export default function SignUp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.neutral.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -189,7 +196,6 @@ const styles = StyleSheet.create({
   googleButtonText: {
     fontSize: theme.typography.fontSizes.h5,
     fontWeight: theme.typography.fontWeights.semibold,
-    color: theme.neutral[700],
     fontFamily: theme.typography.fontFamily,
   },
   footer: {
@@ -205,8 +211,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.neutral[300],
-    backgroundColor: theme.neutral.white,
   },
   googleIcon: {
     marginRight: theme.spacing.sm,
