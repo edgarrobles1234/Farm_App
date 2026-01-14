@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/constants/theme';
+import * as Haptics from 'expo-haptics';
 
 // Mock data for friends
 const MOCK_USERS = [
@@ -22,11 +23,13 @@ export default function AddFriends() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleBack = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     console.log("Heading back to profile")
     router.back();
   };
 
   const handleAddFriend = (userId: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     console.log('Add friend:', userId);
     // Add your friend logic here
   };
