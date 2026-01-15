@@ -1,0 +1,9 @@
+{
+  "name": "villam",
+  "private": true,
+  "scripts": {
+    "dev": "./start.sh",
+    "frontend:start": "npm --prefix frontend run start",
+    "backend:start": "uvicorn app.main:app --reload --app-dir backend"
+  }
+}

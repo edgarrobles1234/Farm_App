@@ -16,10 +16,10 @@ import { useAuth } from "@/context/auth-context";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { signIn } = useAuth();
-  const { colors, isDark } = useTheme();
+  const { signInWithPassword, signInWithGoogle } = useAuth();
+  const { colors } = useTheme();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     Keyboard.dismiss();
     
     if (!email || !password) {
@@ -27,12 +27,17 @@ export default function Login() {
       return;
     }
 
-    signIn();
-    router.replace("/(tabs)");
+    const error = await signInWithPassword(email, password);
+    if (error) {
+      alert(error);
+    }
   };
 
-  const handleGoogleSignIn = () => {
-    console.log("Google sign in");
+  const handleGoogleSignIn = async () => {
+    const error = await signInWithGoogle();
+    if (error) {
+      alert(error);
+    }
   };
 
   return (
