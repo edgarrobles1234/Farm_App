@@ -21,6 +21,7 @@ export default function AddFriends() {
   const { colors } = useTheme();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [addedFriends, setAddedFriends] = useState<Set<string>>(new Set());
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -31,6 +32,11 @@ export default function AddFriends() {
   const handleAddFriend = (userId: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     console.log('Add friend:', userId);
+    setAddedFriends(prev => {
+        const newSet = new Set(prev);
+        newSet.add(userId);
+        return newSet;
+    });
     // Add your friend logic here
   };
 
@@ -49,14 +55,14 @@ export default function AddFriends() {
 
         {/* Search Bar */}
         <View style={[styles.searchContainer, { backgroundColor: colors.input.background, borderColor: colors.border.light, borderWidth: 1 }]}>
-          <Ionicons name="search" size={30} color={colors.text.tertiary} style={styles.searchIcon} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.input.text }]}
-            placeholder="Search friends..."
-            placeholderTextColor={colors.input.placeholder}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+            <Ionicons name="search" size={30} color={colors.text.tertiary} style={styles.searchIcon} />
+            <TextInput
+                style={[styles.searchInput, { color: colors.input.text }]}
+                placeholder="Search friends..."
+                placeholderTextColor={colors.input.placeholder}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+            />
         </View>
 
         {/* Friends List */}
@@ -81,10 +87,11 @@ export default function AddFriends() {
               {/* Add Friend Button */}
               <TouchableOpacity
                 onPress={() => handleAddFriend(item.id)}
-                style={[styles.addButton, { backgroundColor: theme.brand.primary }]}
+                style={[styles.addButton, { backgroundColor: addedFriends.has(item.id)
+                    ? theme.brand.darkerOrange
+                    : theme.brand.primary, }]}
               >
-                <Ionicons name="person-add" size={21} color={theme.neutral.white} />
-                <ThemedText style={[styles.addButtonText, { color: theme.neutral.white }]}>+</ThemedText>
+                <Ionicons name={addedFriends.has(item.id) ? "checkmark" : "person-add"} size={21} color={theme.neutral.white} />
               </TouchableOpacity>
             </View>
           )}
@@ -156,7 +163,7 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.md,
     gap: 4,
