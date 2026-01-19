@@ -75,7 +75,7 @@ export default function HomeScreen() {
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             Your Grocery List
           </ThemedText>
-          <ThemedView style={[styles.card, styles.groceryCard, { backgroundColor: theme.neutral[200] }]} />
+          <ThemedView style={[styles.card, styles.groceryCard, { backgroundColor: colors.card }]} />
         </ThemedView>
 
         {/* Close Farms */}
@@ -105,7 +105,7 @@ export default function HomeScreen() {
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             Top Recipes of the Week
           </ThemedText>
-          <ThemedView style={[styles.card, styles.recipesCard, { backgroundColor: theme.neutral[200] }]} />
+          <ThemedView style={[styles.card, styles.recipesCard, { backgroundColor: colors.card }]} />
         </ThemedView>
       </ScrollView>
     </SafeAreaView>
