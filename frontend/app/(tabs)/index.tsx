@@ -1,107 +1,205 @@
 import { Image } from 'expo-image';
-import { StyleSheet, TouchableOpacity } from 'react-native';
-import React from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
+import React, { useState } from 'react';
 import { router } from 'expo-router';
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts, theme } from '@/constants/theme';
+import { theme } from '@/constants/theme';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import FarmCard from '@/components/ui/farmcard';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const { colors, isDark } = useTheme();
+  const [searchQuery, setSearchQuery] = useState('');
   
-  const handleLogout = () => {
-    // TODO: Clear auth tokens, AsyncStorage, etc.
-    // For now, just navigate back to login
-    router.replace('/(auth)/login');
+  const farms = [
+    { id: 1, name: "Sean's Farm", rating: 4.9, reviews: 209, distance: '3.2 km', products: 'Sells carrots, strawberries, etc.' },
+    { id: 2, name: "Green Valley Farm", rating: 4.9, reviews: 209, distance: '3.2 km', products: 'Sells carrots, strawbe...' },
+  ];
+
+  const handleFarmPress = (farmId: number) => {
+    console.log('Farm pressed:', farmId);
+    // TODO: Navigate to farm detail screen
+  };
+
+  const handleDirectionPress = (farmId: number) => {
+    console.log('Direction pressed for farm:', farmId);
+    // TODO: Open maps with directions
+  };
+
+  const handleSharePress = (farmId: number) => {
+    console.log('Share pressed for farm:', farmId);
+    // TODO: Share farm details
   };
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color={isDark ? '#606060' : '#808080'}
-          name="house.fill"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-            color: colors.text.primary,
-          }}>
-          Welcome Home!
-        </ThemedText>
-      </ThemedView>
-      
-      <ThemedView style={styles.contentContainer}>
-        <ThemedText style={{ color: colors.text.primary }}>
-          You've successfully logged in. This is your home screen.
-        </ThemedText>
-        
-        {/* Add your home screen content here */}
-        <ThemedText style={[styles.subtitle, { color: colors.text.primary }]}>
-          What would you like to do today?
-        </ThemedText>
-        
-        {/* Example content sections */}
-        <ThemedView style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border.light }]}>
-          <ThemedText type="defaultSemiBold" style={{ color: colors.text.primary }}>
-            Quick Actions
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background}} edges={['top']}>
+      <ScrollView style={styles.container}>
+        {/* Header */}
+        <ThemedView style={styles.header}>
+          <ThemedView style={[styles.avatar, { backgroundColor: theme.neutral[400] }]} />
+          <ThemedText type="defaultSemiBold" style={[styles.welcome, { color: colors.text.primary }]}>
+            Welcome John Smith!
           </ThemedText>
-          <ThemedText style={{ color: colors.text.secondary }}>
-            Add your main features here
-          </ThemedText>
+          <TouchableOpacity style={[styles.aiButton, { backgroundColor: theme.brand.primary }]}>
+            <ThemedText style={styles.aiText}>A</ThemedText>
+          </TouchableOpacity>
         </ThemedView>
 
-        {/* Logout Button */}
-        <Button
-          variant="primary"
-          onPress={handleLogout}
-          style={styles.logoutButton}
-        >
-          Log out
-        </Button>
-      </ThemedView>
-    </ParallaxScrollView>
+        {/* Search Bar - Updated to match addfriends.tsx */}
+        <View style={[
+          styles.searchContainer, 
+          { 
+            backgroundColor: colors.input.background, 
+            borderColor: colors.border.light, 
+            borderWidth: 1 
+          }
+        ]}>
+          <Ionicons name="search" size={30} color={colors.text.tertiary} style={styles.searchIcon} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.input.text }]}
+            placeholder="Search farms, recipes..."
+            placeholderTextColor={colors.input.placeholder}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+
+        {/* Grocery List */}
+        <ThemedView style={styles.section}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            Your Grocery List
+          </ThemedText>
+          <ThemedView style={[styles.card, styles.groceryCard, { backgroundColor: theme.neutral[200] }]} />
+        </ThemedView>
+
+        {/* Close Farms */}
+        <ThemedView style={styles.section}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            Close Farms Near You
+          </ThemedText>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.farmsScroll}>
+            {farms.map((farm) => (
+              <FarmCard
+                key={farm.id}
+                name={farm.name}
+                rating={farm.rating}
+                reviews={farm.reviews}
+                distance={farm.distance}
+                products={farm.products}
+                onPress={() => handleFarmPress(farm.id)}
+                onDirectionPress={() => handleDirectionPress(farm.id)}
+                onSharePress={() => handleSharePress(farm.id)}
+              />
+            ))}
+          </ScrollView>
+        </ThemedView>
+
+        {/* Top Recipes */}
+        <ThemedView style={[styles.section, { marginBottom: 80 }]}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            Top Recipes of the Week
+          </ThemedText>
+          <ThemedView style={[styles.card, styles.recipesCard, { backgroundColor: theme.neutral[200] }]} />
+        </ThemedView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.md,
   },
-  titleContainer: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingVertical: theme.spacing.md,
   },
-  contentContainer: {
-    gap: 16,
-    marginTop: 16,
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.full,
+    marginRight: theme.spacing.md,
   },
-  subtitle: {
-    marginTop: 16,
-    fontSize: 18,
+  welcome: {
+    flex: 1,
+    fontSize: theme.typography.fontSizes.h3,
+    fontWeight: theme.typography.fontWeights.semibold,
+    fontFamily: theme.typography.fontFamily,
+  },
+  aiButton: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiText: {
+    color: theme.neutral.white,
+    fontSize: theme.typography.fontSizes.h3,
+    fontWeight: theme.typography.fontWeights.bold,
+    fontFamily: theme.typography.fontFamily,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  searchIcon: {
+    marginRight: theme.spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: theme.typography.fontSizes.h4,
+    fontFamily: theme.typography.fontFamily,
   },
   section: {
-    gap: 8,
-    marginTop: 12,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
+    marginBottom: theme.spacing.lg,
   },
-  logoutButton: {
-    marginTop: 24,
+  sectionTitle: {
+    fontSize: theme.typography.fontSizes.h3,
+    fontWeight: theme.typography.fontWeights.bold,
+    fontFamily: theme.typography.fontFamily,
+    marginBottom: theme.spacing.sm,
+  },
+  card: {
+    borderRadius: theme.borderRadius.lg,
+    marginTop: theme.spacing.md,
+  },
+  groceryCard: {
+    height: 80,
+  },
+  farmsScroll: {
+    marginTop: theme.spacing.md,
+    marginLeft: -theme.spacing.md,
+    paddingLeft: theme.spacing.md,
+  },
+  recipesCard: {
+    height: 120,
+  },
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+    borderTopWidth: 1,
+  },
+  navItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
