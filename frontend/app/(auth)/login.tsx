@@ -69,7 +69,7 @@ export default function Login() {
 
             <View style={styles.form}>
               <Input
-                placeholder="Email or username"
+                placeholder="Email"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -129,7 +129,7 @@ export default function Login() {
               </Typography.H5>
               <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
                 <Typography.H5 color={theme.brand.primary} style={styles.link}>
-                  Create An account
+                  Create an account
                 </Typography.H5>
               </TouchableOpacity>
             </View>
