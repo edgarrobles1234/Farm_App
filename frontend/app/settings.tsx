@@ -101,11 +101,11 @@ export default function SettingsScreen() {
         {/* Settings Options */}
         <View style={[styles.optionsContainer, { 
           backgroundColor: colors.card,
-          borderColor: colors.border.light,
+          borderColor: colors.border.default,
         }]}>
           {/* Delete Account */}
           <TouchableOpacity 
-            style={[styles.option, { borderBottomColor: colors.border.light }]}
+            style={[styles.option, { borderBottomColor: colors.border.default }]}
             onPress={handleDeleteAccount}
           >
             <ThemedText style={[styles.optionText, { color: '#EF4444' }]}>
