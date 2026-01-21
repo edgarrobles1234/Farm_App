@@ -11,15 +11,17 @@ import React, { useState } from "react";
 import { Keyboard, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "@/context/auth-context";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
-  const { colors, isDark } = useTheme();
+  const { signUpWithPassword, signInWithGoogle } = useAuth();
+  const { colors } = useTheme();
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     Keyboard.dismiss();
     
     if (!email || !password || !name || !username) {
@@ -27,13 +29,20 @@ export default function SignUp() {
       return;
     }
 
-    // later: real auth
-    router.replace("/(tabs)");
+    const error = await signUpWithPassword(email, password, { name, username });
+    if (error) {
+      alert(error);
+      return;
+    }
+
+    alert("Check your email to confirm your account.");
   };
 
-  const handleGoogleSignIn = () => {
-    console.log("Google sign in");
-    // Add Google sign in logic later
+  const handleGoogleSignIn = async () => {
+    const error = await signInWithGoogle();
+    if (error) {
+      alert(error);
+    }
   };
 
   return (
