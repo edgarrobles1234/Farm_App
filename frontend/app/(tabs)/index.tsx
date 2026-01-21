@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
 import React, { useState } from 'react';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -42,13 +42,16 @@ export default function HomeScreen() {
       <ScrollView style={styles.container}>
         {/* Header */}
         <ThemedView style={styles.header}>
-          <ThemedView style={[styles.avatar, { backgroundColor: theme.neutral[400] }]} />
+          <TouchableOpacity 
+            style={[styles.avatar, { backgroundColor: theme.brand.primary }]}
+            onPress={() => router.push('/settings')}
+          >
+            <ThemedText style={styles.aiText}>JS</ThemedText>
+          </TouchableOpacity>
           <ThemedText type="defaultSemiBold" style={[styles.welcome, { color: colors.text.primary }]}>
             Welcome John Smith!
           </ThemedText>
-          <TouchableOpacity style={[styles.aiButton, { backgroundColor: theme.brand.primary }]}>
-            <ThemedText style={styles.aiText}>A</ThemedText>
-          </TouchableOpacity>
+
         </ThemedView>
 
         {/* Search Bar - Updated to match addfriends.tsx */}
@@ -127,6 +130,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: theme.borderRadius.full,
     marginRight: theme.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   welcome: {
     flex: 1,
@@ -134,18 +139,14 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeights.semibold,
     fontFamily: theme.typography.fontFamily,
   },
-  aiButton: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   aiText: {
     color: theme.neutral.white,
     fontSize: theme.typography.fontSizes.h3,
     fontWeight: theme.typography.fontWeights.bold,
     fontFamily: theme.typography.fontFamily,
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
