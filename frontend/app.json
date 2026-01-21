@@ -4,17 +4,22 @@
     "slug": "villam",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
 
     "splash": {
-      "image": "./assets/images/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FE9801"
+      "image": "./assets/images/splash.png",
+      "backgroundColor": "#FE9801",
+      "resizeMode": "cover"
     },
 
     "scheme": "villam",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
+    // Add this line
+    "assetBundlePatterns": [
+      "**/*"
+    ],
 
     "ios": {
       "supportsTablet": true,
@@ -23,6 +28,7 @@
 
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/images/splash.png",
         "backgroundColor": "#FE9801"
       },
       "edgeToEdgeEnabled": true,
@@ -32,7 +38,7 @@
 
     "web": {
       "output": "static",
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/logo.png"
     },
 
     "plugins": [
