@@ -38,7 +38,7 @@ export const SemanticColors = {
 const lightTheme = {
   background: NeutralColors.white,
   surface: NeutralColors.white,
-  card: NeutralColors.white,
+  card: NeutralColors[200],
   text: {
     primary: '#11181C',
     secondary: NeutralColors[600],
@@ -66,7 +66,7 @@ const lightTheme = {
 const darkTheme = {
   background: '#151718',
   surface: NeutralColors[900],
-  card: NeutralColors[800],
+  card: NeutralColors[700],
   text: {
     primary: '#ECEDEE',
     secondary: NeutralColors[300],
