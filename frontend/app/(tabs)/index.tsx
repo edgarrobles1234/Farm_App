@@ -86,6 +86,7 @@ export default function HomeScreen() {
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             Close Farms Near You
           </ThemedText>
+          {/* Farm Card is in (components/ui/farmcard.tsx) */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.farmsScroll}>
             {farms.map((farm) => (
               <FarmCard

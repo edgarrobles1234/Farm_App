@@ -15,6 +15,7 @@ export default function GroceryListScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background}} edges={['top']}>
       <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Search Bar for Grocery List*/}
         <View style={[
           styles.searchContainer, 
           { 
@@ -32,6 +33,8 @@ export default function GroceryListScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
+
+        
       </ThemedView>
     </SafeAreaView>
   );
