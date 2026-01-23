@@ -107,10 +107,10 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-    userfriendsSection: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-      },
+  userfriendsSection: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
   container: {
     flex: 1,
   },
