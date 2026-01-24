@@ -8,7 +8,7 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -41,12 +41,14 @@ export default function GroceryListDetailScreen() {
   const list = mockGroceryLists.find((l) => l.id === id);
 
   const [items, setItems] = useState<GroceryItem[]>(list?.items || []);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [categoryNameDrafts, setCategoryNameDrafts] = useState<Record<string, string>>({});
   const [isPinned, setIsPinned] = useState(list?.isPinned || false);
   const [title, setTitle] = useState(list?.title || '');
 
   const richText = useRef<RichEditor>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const itemRefs = useRef<Record<string, TextInput | null>>({});
 
   /* =========================
      KEYBOARD HANDLING
@@ -73,10 +75,10 @@ export default function GroceryListDetailScreen() {
   }, []);
 
   /* =========================
-     BUILD CATEGORIES FROM ITEMS
+     DERIVED CATEGORIES
   ========================= */
 
-  useEffect(() => {
+  const categories = useMemo<Category[]>(() => {
     const map: Record<string, GroceryItem[]> = {};
 
     items.forEach((item) => {
@@ -85,15 +87,13 @@ export default function GroceryListDetailScreen() {
       map[key].push(item);
     });
 
-    setCategories(
-      Object.entries(map).map(([name, items]) => ({
-        id: name,
-        name,
-        isCollapsed: false,
-        items,
-      }))
-    );
-  }, [items]);
+    return Object.entries(map).map(([name, items]) => ({
+      id: name,
+      name,
+      isCollapsed: Boolean(collapsedCategories[name]),
+      items,
+    }));
+  }, [items, collapsedCategories]);
 
   /* =========================
      ACTIONS
@@ -123,11 +123,10 @@ export default function GroceryListDetailScreen() {
   };
 
   const toggleCategory = (id: string) => {
-    setCategories((prev) =>
-      prev.map((c) =>
-        c.id === id ? { ...c, isCollapsed: !c.isCollapsed } : c
-      )
-    );
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
   const addNewItem = (categoryName: string) => {
@@ -140,6 +139,11 @@ export default function GroceryListDetailScreen() {
     };
     
     setItems([...items, newItem]);
+
+    // Focus the new item after state updates
+    setTimeout(() => {
+        itemRefs.current[newItem.id]?.focus();
+    }, 100);
     };
 
   // IMPORTANT: propagate category rename to items
@@ -247,10 +251,24 @@ export default function GroceryListDetailScreen() {
                 {/* Category Header */}
                 <View style={styles.categoryHeader}>
                   <TextInput
-                    value={category.name}
+                    value={categoryNameDrafts[category.name] ?? category.name}
                     onChangeText={(text) =>
-                      renameCategory(category.name, text)
+                      setCategoryNameDrafts((prev) => ({
+                        ...prev,
+                        [category.name]: text,
+                      }))
                     }
+                    onEndEditing={() => {
+                      const draft = categoryNameDrafts[category.name];
+                      if (draft && draft.trim() && draft.trim() !== category.name) {
+                        renameCategory(category.name, draft.trim());
+                      }
+                      setCategoryNameDrafts((prev) => {
+                        const next = { ...prev };
+                        delete next[category.name];
+                        return next;
+                      });
+                    }}
                     style={[
                       styles.categoryTitle,
                       { color: colors.text.primary },
@@ -301,6 +319,9 @@ export default function GroceryListDetailScreen() {
 
                       {/* Editable Item */}
                       <TextInput
+                        ref={(ref) => {
+                          itemRefs.current[item.id] = ref;
+                        }}
                         value={item.name}
                         onChangeText={(text) =>
                             updateItem(item.id, { name: text })
@@ -314,6 +335,7 @@ export default function GroceryListDetailScreen() {
                         ]}
                         onSubmitEditing={() => addNewItem(category.name)}
                         returnKeyType="done"
+                        multiline={false}
                         blurOnSubmit={false}
                         />
 
