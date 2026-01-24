@@ -17,7 +17,6 @@ import { theme } from '@/constants/theme';
 import { mockGroceryLists, GroceryItem } from '@/mockdata/GroceryList';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 
 /* =========================
    TYPES
@@ -45,8 +44,8 @@ export default function GroceryListDetailScreen() {
   const [categoryNameDrafts, setCategoryNameDrafts] = useState<Record<string, string>>({});
   const [isPinned, setIsPinned] = useState(list?.isPinned || false);
   const [title, setTitle] = useState(list?.title || '');
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
-  const richText = useRef<RichEditor>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const itemRefs = useRef<Record<string, TextInput | null>>({});
 
@@ -62,10 +61,12 @@ export default function GroceryListDetailScreen() {
 
     const showSub = Keyboard.addListener(showEvent, (e) => {
       setKeyboardHeight(e.endCoordinates.height);
+      setIsKeyboardVisible(true);
     });
 
     const hideSub = Keyboard.addListener(hideEvent, () => {
       setKeyboardHeight(0);
+      setIsKeyboardVisible(false);
     });
 
     return () => {
@@ -130,21 +131,21 @@ export default function GroceryListDetailScreen() {
   };
 
   const addNewItem = (categoryName: string) => {
-  const newItem: GroceryItem = {
-        id: Date.now().toString(),
-        name: '',
-        checked: false,
-        category: categoryName,
-        isPinned: false,
+    const newItem: GroceryItem = {
+      id: Date.now().toString(),
+      name: '',
+      checked: false,
+      category: categoryName,
+      isPinned: false,
     };
     
     setItems([...items, newItem]);
 
     // Focus the new item after state updates
     setTimeout(() => {
-        itemRefs.current[newItem.id]?.focus();
+      itemRefs.current[newItem.id]?.focus();
     }, 100);
-    };
+  };
 
   // IMPORTANT: propagate category rename to items
   const renameCategory = (oldName: string, newName: string) => {
@@ -300,44 +301,46 @@ export default function GroceryListDetailScreen() {
                       <TouchableOpacity
                         onPress={() => toggleItem(item.id)}
                         style={[
-                            styles.checkbox,
-                            { borderColor: colors.border.default },
-                            item.checked && { 
+                          styles.checkbox,
+                          { borderColor: colors.border.default },
+                          item.checked && { 
                             backgroundColor: theme.brand.primary,
                             borderColor: theme.brand.primary
-                            }
+                          }
                         ]}
-                        >
+                      >
                         {item.checked && (
-                            <Ionicons
+                          <Ionicons
                             name="checkmark"
                             size={18}
                             color={colors.background}
-                            />
+                          />
                         )}
-                        </TouchableOpacity>
+                      </TouchableOpacity>
 
                       {/* Editable Item */}
-                      <TextInput
-                        ref={(ref) => {
-                          itemRefs.current[item.id] = ref;
-                        }}
-                        value={item.name}
-                        onChangeText={(text) =>
+                      <View style={{ flex: 1 }}>
+                        <TextInput
+                          ref={(ref) => {
+                            itemRefs.current[item.id] = ref;
+                          }}
+                          value={item.name}
+                          onChangeText={(text) =>
                             updateItem(item.id, { name: text })
-                        }
-                        placeholder="Item name"
-                        placeholderTextColor={colors.text.tertiary}
-                        style={[
+                          }
+                          placeholder="Item name"
+                          placeholderTextColor={colors.text.tertiary}
+                          multiline={false}
+                          style={[
                             styles.itemText,
                             item.checked && styles.itemTextChecked,
                             { color: colors.text.primary },
-                        ]}
-                        onSubmitEditing={() => addNewItem(category.name)}
-                        returnKeyType="done"
-                        multiline={false}
-                        blurOnSubmit={false}
+                          ]}
+                          onSubmitEditing={() => addNewItem(category.name)}
+                          returnKeyType="next"
+                          blurOnSubmit={false}
                         />
+                      </View>
 
                       {/* Pin */}
                       <TouchableOpacity
@@ -360,31 +363,43 @@ export default function GroceryListDetailScreen() {
           />
         </ThemedView>
 
-        {/* Toolbar (kept for future notes usage) */}
-        <View
-          style={[
-            styles.toolbarContainer,
-            {
-              bottom: keyboardHeight,
-              backgroundColor: colors.card,
-              borderTopColor: colors.border.default,
-            },
-          ]}
-        >
-          <RichToolbar
-            editor={richText}
-            actions={[
-              actions.setBold,
-              actions.setItalic,
-              actions.insertBulletsList,
-              actions.insertOrderedList,
-              actions.undo,
-              actions.redo,
+        {/* Custom Toolbar - only shows when keyboard is visible */}
+        {isKeyboardVisible && (
+          <View
+            style={[
+              styles.toolbarContainer,
+              {
+                bottom: keyboardHeight,
+                backgroundColor: colors.input.background,
+                borderTopColor: colors.border.light,
+              },
             ]}
-            iconTint={colors.text.primary}
-            selectedIconTint={theme.brand.red}
-          />
-        </View>
+          >
+            <TouchableOpacity style={styles.toolbarButton}>
+              <ThemedText style={[styles.toolbarText, { color: colors.text.tertiary }]}>Aa</ThemedText>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.toolbarButton}>
+              <Ionicons name="list" size={24} color={colors.text.tertiary} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.toolbarButton}>
+              <ThemedText style={[styles.toolbarTextBold, { color: colors.text.tertiary }]}>B</ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.toolbarButton}>
+              <ThemedText style={[styles.toolbarTextUnderline, { color: colors.text.tertiary }]}>U</ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.toolbarButton}>
+              <ThemedText style={[styles.toolbarTextItalic, { color: colors.text.tertiary }]}>I</ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.toolbarButton}>
+              <Ionicons name="image-outline" size={24} color={colors.text.tertiary} />
+            </TouchableOpacity>
+          </View>
+        )}
       </SafeAreaView>
     </>
   );
@@ -429,7 +444,7 @@ const styles = StyleSheet.create({
   },
   itemRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingVertical: theme.spacing.sm,
   },
   checkbox: {
@@ -444,22 +459,49 @@ const styles = StyleSheet.create({
   itemText: {
     fontSize: theme.typography.fontSizes.h4,
   },
-  itemNotes: {
-    fontSize: theme.typography.fontSizes.h5,
-    marginTop: 4,
-  },
   itemTextChecked: {
     textDecorationLine: 'line-through',
     opacity: 0.5,
   },
   listContent: {
-    paddingBottom: theme.spacing.xl * 2.5,
+    paddingBottom: theme.spacing.xl * 3,
   },
   toolbarContainer: {
     position: 'absolute',
     left: 0,
     right: 0,
     borderTopWidth: 1,
-    padding: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    borderRadius: 15,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  toolbarButton: {
+    padding: theme.spacing.xs,
+  },
+  toolbarText: {
+    fontSize: 23,
+    fontWeight: '400',
+    color: '#000000',
+  },
+  toolbarTextBold: {
+    fontSize: 23,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  toolbarTextUnderline: {
+    fontSize: 23,
+    fontWeight: '600',
+    color: '#000000',
+    textDecorationLine: 'underline',
+  },
+  toolbarTextItalic: {
+    fontSize: 23,
+    fontStyle: 'italic',
+    color: '#000000',
   },
 });
