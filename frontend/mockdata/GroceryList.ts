@@ -9,6 +9,7 @@ export interface GroceryItem {
   isPinned?: boolean;
 }
 
+
 export interface GroceryList {
   id: string;
   title: string;
