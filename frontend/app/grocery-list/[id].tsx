@@ -1,6 +1,14 @@
 // app/grocery-list/[id].tsx
-import { StyleSheet, View, FlatList, TouchableOpacity, TextInput } from 'react-native';
-import React, { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  Keyboard,
+  Platform,
+} from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -9,14 +17,157 @@ import { theme } from '@/constants/theme';
 import { mockGroceryLists, GroceryItem } from '@/mockdata/GroceryList';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
+
+/* =========================
+   TYPES
+========================= */
+
+type Category = {
+  id: string;
+  name: string;
+  isCollapsed: boolean;
+  items: GroceryItem[];
+};
+
+/* =========================
+   SCREEN
+========================= */
 
 export default function GroceryListDetailScreen() {
   const { id } = useLocalSearchParams();
   const { colors } = useTheme();
-  
-  const list = mockGroceryLists.find(l => l.id === id);
-  const [items, setItems] = useState(list?.items || []);
+
+  const list = mockGroceryLists.find((l) => l.id === id);
+
+  const [items, setItems] = useState<GroceryItem[]>(list?.items || []);
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [categoryNameDrafts, setCategoryNameDrafts] = useState<Record<string, string>>({});
   const [isPinned, setIsPinned] = useState(list?.isPinned || false);
+  const [title, setTitle] = useState(list?.title || '');
+
+  const richText = useRef<RichEditor>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const itemRefs = useRef<Record<string, TextInput | null>>({});
+
+  /* =========================
+     KEYBOARD HANDLING
+  ========================= */
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  /* =========================
+     DERIVED CATEGORIES
+  ========================= */
+
+  const categories = useMemo<Category[]>(() => {
+    const map: Record<string, GroceryItem[]> = {};
+
+    items.forEach((item) => {
+      const key = item.category || 'Uncategorized';
+      if (!map[key]) map[key] = [];
+      map[key].push(item);
+    });
+
+    return Object.entries(map).map(([name, items]) => ({
+      id: name,
+      name,
+      isCollapsed: Boolean(collapsedCategories[name]),
+      items,
+    }));
+  }, [items, collapsedCategories]);
+
+  /* =========================
+     ACTIONS
+  ========================= */
+
+  const updateItem = (
+    itemId: string,
+    updates: Partial<GroceryItem>
+  ) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, ...updates } : item
+      )
+    );
+  };
+
+  const toggleItem = (itemId: string) => {
+    updateItem(itemId, { checked: !items.find(i => i.id === itemId)?.checked });
+  };
+
+  const toggleItemPin = (itemId: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, isPinned: !item.isPinned } : item
+      )
+    );
+  };
+
+  const toggleCategory = (id: string) => {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const addNewItem = (categoryName: string) => {
+  const newItem: GroceryItem = {
+        id: Date.now().toString(),
+        name: '',
+        checked: false,
+        category: categoryName,
+        isPinned: false,
+    };
+    
+    setItems([...items, newItem]);
+
+    // Focus the new item after state updates
+    setTimeout(() => {
+        itemRefs.current[newItem.id]?.focus();
+    }, 100);
+    };
+
+  // IMPORTANT: propagate category rename to items
+  const renameCategory = (oldName: string, newName: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.category === oldName
+          ? { ...item, category: newName }
+          : item
+      )
+    );
+  };
+
+  const toggleListPin = () => {
+    setIsPinned(!isPinned);
+  };
+
+  const deleteList = () => {
+    router.back();
+  };
+
+  /* =========================
+     EMPTY STATE
+  ========================= */
 
   if (!list) {
     return (
@@ -28,75 +179,54 @@ export default function GroceryListDetailScreen() {
     );
   }
 
-  // Group items by category
-  const groupedItems = items.reduce((acc, item) => {
-    const category = item.category || 'Uncategorized';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(item);
-    return acc;
-  }, {} as Record<string, GroceryItem[]>);
-
-  const toggleItem = (itemId: string) => {
-    setItems(items.map(item => 
-      item.id === itemId ? { ...item, checked: !item.checked } : item
-    ));
-  };
-
-  const toggleItemPin = (itemId: string) => {
-    setItems(items.map(item => 
-      item.id === itemId ? { ...item, isPinned: !item.isPinned } : item
-    ));
-  };
-
-  const toggleListPin = () => {
-    setIsPinned(!isPinned);
-  };
-
-  const deleteList = () => {
-    // Handle delete
-    router.back();
-  };
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
     <>
-      <Stack.Screen 
-        options={{ 
+      <Stack.Screen
+        options={{
           headerShown: true,
           headerTitle: '',
           headerLeft: () => (
-            <View style={styles.headerLeftContainer}>
-                <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons
-                    name="arrow-back"
-                    size={28}
-                    color={colors.text.primary}
-                    style={styles.backButton}
-                />
-                </TouchableOpacity>
-            </View>
-            ),
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons
+                name="arrow-back"
+                size={28}
+                color={colors.text.primary}
+              />
+            </TouchableOpacity>
+          ),
           headerRight: () => (
             <View style={styles.headerRight}>
-              <TouchableOpacity onPress={toggleListPin} style={styles.headerButton}>
-                <Ionicons 
-                  name={isPinned ? "pin" : "pin-outline"} 
-                  size={24} 
-                  color={isPinned ? theme.brand.red : colors.text.primary} 
+              <TouchableOpacity onPress={toggleListPin}>
+                <Ionicons
+                  name={isPinned ? 'pin' : 'pin-outline'}
+                  size={24}
+                  color={isPinned ? theme.brand.red : colors.text.primary}
                 />
               </TouchableOpacity>
-              <TouchableOpacity onPress={deleteList} style={styles.headerButton}>
-                <Ionicons name="trash-outline" size={24} color={colors.text.primary} />
+
+              <TouchableOpacity onPress={deleteList}>
+                <Ionicons
+                  name="trash-outline"
+                  size={24}
+                  color={colors.text.primary}
+                />
               </TouchableOpacity>
             </View>
           ),
           headerStyle: {
             backgroundColor: colors.background,
           },
-        }} 
+        }}
       />
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
+
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        edges={['bottom']}
+      >
         <ThemedView style={styles.container}>
           {/* Date */}
           <ThemedText style={[styles.date, { color: colors.text.secondary }]}>
@@ -104,104 +234,167 @@ export default function GroceryListDetailScreen() {
           </ThemedText>
 
           {/* Title */}
-          <ThemedText style={styles.title}>{list.title}</ThemedText>
+          <TextInput
+            style={[styles.title, { color: colors.text.primary }]}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Title..."
+            placeholderTextColor={colors.text.tertiary}
+          />
 
-          {/* Items grouped by category */}
+          {/* Categories */}
           <FlatList
-            data={Object.keys(groupedItems)}
-            keyExtractor={(category) => category}
+            data={categories}
+            keyExtractor={(category) => category.id}
             renderItem={({ item: category }) => (
               <View style={styles.categorySection}>
                 {/* Category Header */}
-                <TouchableOpacity style={styles.categoryHeader}>
-                  <ThemedText style={styles.categoryTitle}>{category}</ThemedText>
-                  <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
-                </TouchableOpacity>
+                <View style={styles.categoryHeader}>
+                  <TextInput
+                    value={categoryNameDrafts[category.name] ?? category.name}
+                    onChangeText={(text) =>
+                      setCategoryNameDrafts((prev) => ({
+                        ...prev,
+                        [category.name]: text,
+                      }))
+                    }
+                    onEndEditing={() => {
+                      const draft = categoryNameDrafts[category.name];
+                      if (draft && draft.trim() && draft.trim() !== category.name) {
+                        renameCategory(category.name, draft.trim());
+                      }
+                      setCategoryNameDrafts((prev) => {
+                        const next = { ...prev };
+                        delete next[category.name];
+                        return next;
+                      });
+                    }}
+                    style={[
+                      styles.categoryTitle,
+                      { color: colors.text.primary },
+                    ]}
+                    placeholder="Category"
+                    placeholderTextColor={colors.text.tertiary}
+                  />
 
-                {/* Category Items */}
-                {groupedItems[category].map((item) => (
-                  <View
-                    key={item.id}
-                    style={styles.itemRow}
+                  <TouchableOpacity
+                    onPress={() => toggleCategory(category.id)}
                   >
-                    {/* Checkbox */}
-                    <TouchableOpacity
-                      onPress={() => toggleItem(item.id)}
-                      activeOpacity={0.7}
-                      style={styles.checkboxTouchable}
-                    >
-                      <View style={[
-                        styles.checkbox,
-                        { borderColor: colors.border.default },
-                        item.checked && { 
-                          backgroundColor: colors.text.primary, 
-                          borderColor: colors.text.primary 
-                        }
-                      ]}>
+                    <Ionicons
+                      name={
+                        category.isCollapsed
+                          ? 'chevron-forward'
+                          : 'chevron-down'
+                      }
+                      size={20}
+                      color={colors.text.secondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Items */}
+                {!category.isCollapsed &&
+                  category.items.map((item) => (
+                    <View key={item.id} style={styles.itemRow}>
+                      {/* Checkbox */}
+                      <TouchableOpacity
+                        onPress={() => toggleItem(item.id)}
+                        style={[
+                            styles.checkbox,
+                            { borderColor: colors.border.default },
+                            item.checked && { 
+                            backgroundColor: theme.brand.primary,
+                            borderColor: theme.brand.primary
+                            }
+                        ]}
+                        >
                         {item.checked && (
-                          <Ionicons name="checkmark" size={18} color={colors.background} />
+                            <Ionicons
+                            name="checkmark"
+                            size={18}
+                            color={colors.background}
+                            />
                         )}
-                      </View>
-                    </TouchableOpacity>
+                        </TouchableOpacity>
 
-                    {/* Item text */}
-                    <TouchableOpacity
-                      style={styles.itemTextContainer}
-                      onPress={() => toggleItem(item.id)}
-                      activeOpacity={0.7}
-                    >
-                      <ThemedText style={[
-                        styles.itemText,
-                        item.checked && styles.itemTextChecked
-                      ]}>
-                        {item.quantity && `${item.quantity} `}
-                        {item.name}
-                      </ThemedText>
-                    </TouchableOpacity>
-
-                    {/* Pin icon for pinned items */}
-                    <TouchableOpacity 
-                      onPress={() => toggleItemPin(item.id)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      {item.isPinned && (
-                        <Ionicons 
-                          name="pin" 
-                          size={18} 
-                          color={colors.text.primary} 
-                          style={styles.pinIcon}
+                      {/* Editable Item */}
+                      <TextInput
+                        ref={(ref) => {
+                          itemRefs.current[item.id] = ref;
+                        }}
+                        value={item.name}
+                        onChangeText={(text) =>
+                            updateItem(item.id, { name: text })
+                        }
+                        placeholder="Item name"
+                        placeholderTextColor={colors.text.tertiary}
+                        style={[
+                            styles.itemText,
+                            item.checked && styles.itemTextChecked,
+                            { color: colors.text.primary },
+                        ]}
+                        onSubmitEditing={() => addNewItem(category.name)}
+                        returnKeyType="done"
+                        multiline={false}
+                        blurOnSubmit={false}
                         />
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                ))}
+
+                      {/* Pin */}
+                      <TouchableOpacity
+                        onPress={() => toggleItemPin(item.id)}
+                      >
+                        {item.isPinned && (
+                          <Ionicons
+                            name="pin"
+                            size={18}
+                            color={colors.text.primary}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  ))}
               </View>
             )}
-            showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
           />
-
-          {/* Add item input */}
-          <View style={[styles.inputContainer, { backgroundColor: colors.card }]}>
-            <TextInput
-              style={[styles.input, { color: colors.text.primary }]}
-              placeholder="Add item..."
-              placeholderTextColor={colors.text.tertiary}
-            />
-          </View>
         </ThemedView>
+
+        {/* Toolbar (kept for future notes usage) */}
+        <View
+          style={[
+            styles.toolbarContainer,
+            {
+              bottom: keyboardHeight,
+              backgroundColor: colors.card,
+              borderTopColor: colors.border.default,
+            },
+          ]}
+        >
+          <RichToolbar
+            editor={richText}
+            actions={[
+              actions.setBold,
+              actions.setItalic,
+              actions.insertBulletsList,
+              actions.insertOrderedList,
+              actions.undo,
+              actions.redo,
+            ]}
+            iconTint={colors.text.primary}
+            selectedIconTint={theme.brand.red}
+          />
+        </View>
       </SafeAreaView>
     </>
   );
 }
 
+/* =========================
+   STYLES
+========================= */
+
 const styles = StyleSheet.create({
-    backButton: {
-        paddingLeft: 4, 
-    },
-    headerLeftContainer: {
-        justifyContent: 'center',
-    },
   container: {
     flex: 1,
     paddingHorizontal: 20,
@@ -210,17 +403,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
   },
-  headerButton: {
-    padding: 4,
-  },
   date: {
     fontSize: theme.typography.fontSizes.h4,
     textAlign: 'center',
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.xs,
+    marginVertical: theme.spacing.sm,
   },
   title: {
-    marginTop: theme.spacing.md,
     fontSize: theme.typography.fontSizes.h2,
     fontWeight: '700',
     marginBottom: theme.spacing.lg,
@@ -233,19 +421,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
   },
   categoryTitle: {
     fontSize: theme.typography.fontSizes.h3,
     fontWeight: '600',
+    flex: 1,
   },
   itemRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: theme.spacing.sm,
-  },
-  checkboxTouchable: {
-    marginRight: theme.spacing.md,
   },
   checkbox: {
     width: 24,
@@ -254,31 +439,27 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  itemTextContainer: {
-    flex: 1,
+    marginRight: theme.spacing.md,
   },
   itemText: {
     fontSize: theme.typography.fontSizes.h4,
+  },
+  itemNotes: {
+    fontSize: theme.typography.fontSizes.h5,
+    marginTop: 4,
   },
   itemTextChecked: {
     textDecorationLine: 'line-through',
     opacity: 0.5,
   },
-  pinIcon: {
-    marginLeft: theme.spacing.sm,
-  },
   listContent: {
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: theme.spacing.xl * 2.5,
   },
-  inputContainer: {
-    borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-  },
-  input: {
-    fontSize: theme.typography.fontSizes.h4,
-    paddingVertical: theme.spacing.md,
+  toolbarContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+    padding: theme.spacing.sm,
   },
 });
