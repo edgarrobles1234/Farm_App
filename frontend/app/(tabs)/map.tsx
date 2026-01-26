@@ -11,7 +11,7 @@ type Region = {
   longitudeDelta: number;
 };
 
-export default function MapScreen() {
+export default function MapTab() {
   const [region, setRegion] = useState<Region | null>(null);
   const [error, setError] = useState<string | null>(null);
 
