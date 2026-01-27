@@ -40,7 +40,7 @@ export default function HomeScreen() {
       reviews: 209,
       products: 'Sells carrots, strawbe...',
       latitude: 34.0407,
-      longitude: -118.2468,
+      longitude: -120.2468,
     },
   ];
 
