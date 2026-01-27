@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { router, useNavigation } from 'expo-router';
+import * as Location from 'expo-location';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -13,14 +14,120 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FarmCard from '@/components/ui/farmcard';
 import { Ionicons } from '@expo/vector-icons';
 
+type Coords = { latitude: number; longitude: number };
+
+type Farm = {
+  id: number;
+  name: string;
+  rating: number;
+  reviews: number;
+  products: string;
+  latitude: number;
+  longitude: number;
+};
+
+function toRad(deg: number) {
+  return (deg * Math.PI) / 180;
+}
+
+// Haversine distance in miles
+function distanceMiles(a: Coords, b: Coords) {
+  const R = 3958.7613; // Earth radius in miles
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLon = Math.sin(dLon / 2);
+
+  const h =
+    sinDLat * sinDLat +
+    Math.cos(lat1) * Math.cos(lat2) * (sinDLon * sinDLon);
+
+  const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+  return R * c;
+}
+
 export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const farms = [
-    { id: 1, name: "Sean's Farm", rating: 4.9, reviews: 209, distance: '3.2 km', products: 'Sells carrots, strawberries, etc.' },
-    { id: 2, name: "Green Valley Farm", rating: 4.9, reviews: 209, distance: '3.2 km', products: 'Sells carrots, strawbe...' },
+  const [locationText, setLocationText] = useState('Getting location…');
+  const [userCoords, setUserCoords] = useState<Coords | null>(null);
+
+  // NOTE: Replace these coordinates with real farm coordinates later
+  const farms: Farm[] = [
+    {
+      id: 1,
+      name: "Sean's Farm",
+      rating: 4.9,
+      reviews: 209,
+      products: 'Sells carrots, strawberries, etc.',
+      latitude: 34.9530,
+      longitude: -120.4357,
+    },
+    {
+      id: 2,
+      name: 'Green Valley Farm',
+      rating: 4.9,
+      reviews: 209,
+      products: 'Sells carrots, strawbe...',
+      latitude: 35.1428,
+      longitude: -120.6413,
+    },
   ];
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status !== 'granted') {
+          if (mounted) setLocationText('Location permission denied');
+          return;
+        }
+
+        const pos = await Location.getCurrentPositionAsync({});
+        const { latitude, longitude } = pos.coords;
+
+        if (mounted) {
+          setUserCoords({ latitude, longitude });
+        }
+
+        const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+        const p = places?.[0];
+
+        if (!mounted) return;
+
+        if (p) {
+          const pretty = [p.city, p.region].filter(Boolean).join(', ');
+          setLocationText(pretty || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        } else {
+          setLocationText(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        }
+      } catch (e) {
+        if (mounted) setLocationText('Could not get location');
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const farmsWithDistance = farms
+    .map((farm) => {
+      const d =
+        userCoords
+          ? distanceMiles(userCoords, { latitude: farm.latitude, longitude: farm.longitude })
+          : null;
+
+      return { ...farm, distanceMi: d };
+    })
+    .sort((a, b) => (a.distanceMi ?? Infinity) - (b.distanceMi ?? Infinity));
 
   const handleFarmPress = (farmId: number) => {
     console.log('Farm pressed:', farmId);
@@ -33,36 +140,40 @@ export default function HomeScreen() {
   };
 
   const handleSharePress = (farmId: number) => {
-    console.log('Share pressed for farm:', farmId);
+    console.log('Share pressed:', farmId);
     // TODO: Share farm details
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background}} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView style={styles.container}>
         {/* Header */}
         <ThemedView style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.avatar, { backgroundColor: theme.brand.primary }]}
             onPress={() => router.push('/settings')}
           >
             <ThemedText style={styles.aiText}>JS</ThemedText>
           </TouchableOpacity>
-          <ThemedText type="defaultSemiBold" style={[styles.welcome, { color: colors.text.primary }]}>
-            Welcome John Smith!
-          </ThemedText>
 
+          <View style={{ flex: 1 }}>
+            <ThemedText type="defaultSemiBold" style={[styles.welcome, { color: colors.text.primary }]}>
+              Welcome John Smith!
+            </ThemedText>
+          </View>
         </ThemedView>
 
-        {/* Search Bar - Updated to match addfriends.tsx */}
-        <View style={[
-          styles.searchContainer, 
-          { 
-            backgroundColor: colors.input.background, 
-            borderColor: colors.border.light, 
-            borderWidth: 1 
-          }
-        ]}>
+        {/* Search Bar */}
+        <View
+          style={[
+            styles.searchContainer,
+            {
+              backgroundColor: colors.input.background,
+              borderColor: colors.border.light,
+              borderWidth: 1,
+            },
+          ]}
+        >
           <Ionicons name="search" size={30} color={colors.text.tertiary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.input.text }]}
@@ -86,15 +197,21 @@ export default function HomeScreen() {
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             Close Farms Near You
           </ThemedText>
-          {/* Farm Card is in (components/ui/farmcard.tsx) */}
+
+          <ThemedText style={{ color: colors.text.tertiary, marginTop: 2, marginBottom: 8 }}>
+            📍 {locationText}
+          </ThemedText>
+
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.farmsScroll}>
-            {farms.map((farm) => (
+            {farmsWithDistance.map((farm) => (
               <FarmCard
                 key={farm.id}
                 name={farm.name}
                 rating={farm.rating}
                 reviews={farm.reviews}
-                distance={farm.distance}
+                distance={
+                  farm.distanceMi != null ? `${farm.distanceMi.toFixed(1)} mi` : '…'
+                }
                 products={farm.products}
                 onPress={() => handleFarmPress(farm.id)}
                 onDirectionPress={() => handleDirectionPress(farm.id)}
