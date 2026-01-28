@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { router, useNavigation } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
@@ -13,14 +13,38 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FarmCard from '@/components/ui/farmcard';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useCurrentLocation } from '@/hooks/useCurrentLocation';
+import { addDistanceAndSort, type FarmWithCoords } from '@/lib/location';
+
 export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const farms = [
-    { id: 1, name: "Sean's Farm", rating: 4.9, reviews: 209, distance: '3.2 km', products: 'Sells carrots, strawberries, etc.' },
-    { id: 2, name: "Green Valley Farm", rating: 4.9, reviews: 209, distance: '3.2 km', products: 'Sells carrots, strawbe...' },
+
+  const { coords: userCoords, locationText } = useCurrentLocation();
+
+  // NOTE: Replace these coordinates with real farm coordinates later
+  const farms: FarmWithCoords[] = [
+    {
+      id: 1,
+      name: "Sean's Farm",
+      rating: 4.9,
+      reviews: 209,
+      products: 'Sells carrots, strawberries, etc.',
+      latitude: 34.0522,
+      longitude: -118.2437,
+    },
+    {
+      id: 2,
+      name: 'Green Valley Farm',
+      rating: 4.9,
+      reviews: 209,
+      products: 'Sells carrots, strawbe...',
+      latitude: 34.0407,
+      longitude: -120.2468,
+    },
   ];
+
+  const farmsWithDistance = addDistanceAndSort(farms, userCoords);
 
   const handleFarmPress = (farmId: number) => {
     console.log('Farm pressed:', farmId);
@@ -33,7 +57,7 @@ export default function HomeScreen() {
   };
 
   const handleSharePress = (farmId: number) => {
-    console.log('Share pressed for farm:', farmId);
+    console.log('Share pressed:', farmId);
     // TODO: Share farm details
   };
 
@@ -42,7 +66,7 @@ export default function HomeScreen() {
       <ScrollView style={styles.container}>
         {/* Header */}
         <ThemedView style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.avatar, { backgroundColor: theme.brand.primary }]}
             onPress={() => router.push('/settings')}
           >
@@ -51,16 +75,15 @@ export default function HomeScreen() {
           <ThemedText type="defaultSemiBold" style={[styles.welcome, { color: colors.text.primary }]}>
             Welcome John Smith!
           </ThemedText>
-
         </ThemedView>
 
-        {/* Search Bar - Updated to match addfriends.tsx */}
+        {/* Search Bar */}
         <View style={[
-          styles.searchContainer, 
-          { 
-            backgroundColor: colors.input.background, 
-            borderColor: colors.border.light, 
-            borderWidth: 1 
+          styles.searchContainer,
+          {
+            backgroundColor: colors.input.background,
+            borderColor: colors.border.light,
+            borderWidth: 1
           }
         ]}>
           <Ionicons name="search" size={30} color={colors.text.tertiary} style={styles.searchIcon} />
@@ -86,15 +109,19 @@ export default function HomeScreen() {
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             Close Farms Near You
           </ThemedText>
-          {/* Farm Card is in (components/ui/farmcard.tsx) */}
+
+          <ThemedText style={{ color: colors.text.tertiary, marginTop: 2, marginBottom: 8 }}>
+            📍 {locationText}
+          </ThemedText>
+
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.farmsScroll}>
-            {farms.map((farm) => (
+            {farmsWithDistance.map((farm) => (
               <FarmCard
                 key={farm.id}
                 name={farm.name}
                 rating={farm.rating}
                 reviews={farm.reviews}
-                distance={farm.distance}
+                distance={farm.distanceMi != null ? `${farm.distanceMi.toFixed(1)} mi` : '…'}
                 products={farm.products}
                 onPress={() => handleFarmPress(farm.id)}
                 onDirectionPress={() => handleDirectionPress(farm.id)}

@@ -5,27 +5,21 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-
     "splash": {
       "image": "./assets/images/splash.png",
       "backgroundColor": "#FE9801",
       "resizeMode": "cover"
     },
-
     "scheme": "villam",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
-    // Add this line
     "assetBundlePatterns": [
       "**/*"
     ],
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.villam"
     },
-
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/splash.png",
@@ -35,17 +29,20 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.villam"
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/images/logo.png"
     },
-
     "plugins": [
       "expo-router",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Villam to use your location to show nearby farms and your position on the map."
+        }
+      ]
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
