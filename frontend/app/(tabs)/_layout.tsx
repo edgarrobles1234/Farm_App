@@ -33,15 +33,6 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="search"
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons size={28} name={focused ? "search" : "search-outline"} color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
         name="map"
         options={{
           tabBarIcon: ({ color, focused }) => (
