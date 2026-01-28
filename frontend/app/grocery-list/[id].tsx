@@ -22,11 +22,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
    TYPES
 ========================= */
 
+type TextStyle = {
+  bold?: boolean;
+  underline?: boolean;
+  italic?: boolean;
+};
+
+type ExtendedGroceryItem = GroceryItem & {
+  textStyle?: TextStyle;
+};
+
 type Category = {
   id: string;
   name: string;
   isCollapsed: boolean;
-  items: GroceryItem[];
+  items: ExtendedGroceryItem[];
 };
 
 /* =========================
@@ -39,12 +49,13 @@ export default function GroceryListDetailScreen() {
 
   const list = mockGroceryLists.find((l) => l.id === id);
 
-  const [items, setItems] = useState<GroceryItem[]>(list?.items || []);
+  const [items, setItems] = useState<ExtendedGroceryItem[]>(list?.items || []);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [categoryNameDrafts, setCategoryNameDrafts] = useState<Record<string, string>>({});
   const [isPinned, setIsPinned] = useState(list?.isPinned || false);
   const [title, setTitle] = useState(list?.title || '');
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
 
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const itemRefs = useRef<Record<string, TextInput | null>>({});
@@ -80,7 +91,7 @@ export default function GroceryListDetailScreen() {
   ========================= */
 
   const categories = useMemo<Category[]>(() => {
-    const map: Record<string, GroceryItem[]> = {};
+    const map: Record<string, ExtendedGroceryItem[]> = {};
 
     items.forEach((item) => {
       const key = item.category || 'Uncategorized';
@@ -102,7 +113,7 @@ export default function GroceryListDetailScreen() {
 
   const updateItem = (
     itemId: string,
-    updates: Partial<GroceryItem>
+    updates: Partial<ExtendedGroceryItem>
   ) => {
     setItems((prev) =>
       prev.map((item) =>
@@ -131,12 +142,13 @@ export default function GroceryListDetailScreen() {
   };
 
   const addNewItem = (categoryName: string) => {
-    const newItem: GroceryItem = {
+    const newItem: ExtendedGroceryItem = {
       id: Date.now().toString(),
       name: '',
       checked: false,
       category: categoryName,
       isPinned: false,
+      textStyle: {},
     };
     
     setItems([...items, newItem]);
@@ -165,6 +177,35 @@ export default function GroceryListDetailScreen() {
   const deleteList = () => {
     router.back();
   };
+
+  /* =========================
+     TOOLBAR ACTIONS
+  ========================= */
+
+  const toggleTextStyle = (styleType: 'bold' | 'underline' | 'italic') => {
+    if (!focusedItemId) return;
+
+    const item = items.find(i => i.id === focusedItemId);
+    if (!item) return;
+
+    const currentStyle = item.textStyle || {};
+    
+    updateItem(focusedItemId, {
+      textStyle: {
+        ...currentStyle,
+        [styleType]: !currentStyle[styleType],
+      },
+    });
+  };
+
+  // Get current focused item's styles for button highlighting
+  const getFocusedItemStyles = () => {
+    if (!focusedItemId) return {};
+    const item = items.find(i => i.id === focusedItemId);
+    return item?.textStyle || {};
+  };
+
+  const focusedStyles = getFocusedItemStyles();
 
   /* =========================
      EMPTY STATE
@@ -328,6 +369,8 @@ export default function GroceryListDetailScreen() {
                           onChangeText={(text) =>
                             updateItem(item.id, { name: text })
                           }
+                          onFocus={() => setFocusedItemId(item.id)}
+                          onBlur={() => setFocusedItemId(null)}
                           placeholder="Item name"
                           placeholderTextColor={colors.text.tertiary}
                           multiline={false}
@@ -335,6 +378,14 @@ export default function GroceryListDetailScreen() {
                             styles.itemText,
                             item.checked && styles.itemTextChecked,
                             { color: colors.text.primary },
+                            // Apply text styles
+                            item.textStyle?.bold && { fontWeight: '700' },
+                            item.textStyle?.italic && { fontStyle: 'italic' },
+                            item.textStyle?.underline && { textDecorationLine: 'underline' },
+                            // Handle combination of underline with line-through
+                            item.checked && item.textStyle?.underline && { 
+                              textDecorationLine: 'underline line-through' 
+                            },
                           ]}
                           onSubmitEditing={() => addNewItem(category.name)}
                           returnKeyType="next"
@@ -383,16 +434,49 @@ export default function GroceryListDetailScreen() {
               <Ionicons name="list" size={24} color={colors.text.tertiary} />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.toolbarButton}>
-              <ThemedText style={[styles.toolbarTextBold, { color: colors.text.tertiary }]}>B</ThemedText>
+            <TouchableOpacity 
+              style={[
+                styles.toolbarButton,
+                focusedStyles.bold && styles.toolbarButtonActive
+              ]}
+              onPress={() => toggleTextStyle('bold')}
+            >
+              <ThemedText style={[
+                styles.toolbarTextBold, 
+                { color: focusedStyles.bold ? theme.brand.primary : colors.text.tertiary }
+              ]}>
+                B
+              </ThemedText>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.toolbarButton}>
-              <ThemedText style={[styles.toolbarTextUnderline, { color: colors.text.tertiary }]}>U</ThemedText>
+            <TouchableOpacity 
+              style={[
+                styles.toolbarButton,
+                focusedStyles.underline && styles.toolbarButtonActive
+              ]}
+              onPress={() => toggleTextStyle('underline')}
+            >
+              <ThemedText style={[
+                styles.toolbarTextUnderline, 
+                { color: focusedStyles.underline ? theme.brand.primary : colors.text.tertiary }
+              ]}>
+                U
+              </ThemedText>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.toolbarButton}>
-              <ThemedText style={[styles.toolbarTextItalic, { color: colors.text.tertiary }]}>I</ThemedText>
+            <TouchableOpacity 
+              style={[
+                styles.toolbarButton,
+                focusedStyles.italic && styles.toolbarButtonActive
+              ]}
+              onPress={() => toggleTextStyle('italic')}
+            >
+              <ThemedText style={[
+                styles.toolbarTextItalic, 
+                { color: focusedStyles.italic ? theme.brand.primary : colors.text.tertiary }
+              ]}>
+                I
+              </ThemedText>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.toolbarButton}>
@@ -482,6 +566,10 @@ const styles = StyleSheet.create({
   },
   toolbarButton: {
     padding: theme.spacing.xs,
+  },
+  toolbarButtonActive: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 6,
   },
   toolbarText: {
     fontSize: 23,
