@@ -83,7 +83,6 @@ export default function MapTab() {
         ref={sheetRef}
         snapPoints={["5%", "60%", "80%"]}
         index={0}
-        enablePanDownToClose
         backgroundStyle={{ backgroundColor: colors.background }}
         handleIndicatorStyle={{ backgroundColor: colors.border.light }}
       >
