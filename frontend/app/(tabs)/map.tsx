@@ -19,9 +19,7 @@ export default function MapTab() {
   const sheetRef = useRef<BottomSheet>(null);
   const [region, setRegion] = useState<Region | null>(null);
 
-  /* -----------------------------
-     Location
-  ------------------------------*/
+  
   useEffect(() => {
     (async () => {
       const { status } =
@@ -124,9 +122,6 @@ export default function MapTab() {
   );
 }
 
-/* -----------------------------
-   Styles (Home-consistent)
-------------------------------*/
 const styles = StyleSheet.create({
   floatingSearch: {
     position: "absolute",
