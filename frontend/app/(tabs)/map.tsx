@@ -259,7 +259,6 @@ const styles = StyleSheet.create({
   recentsBox: {
     height: 80,
     borderRadius: 30,
-    marginBottom: theme.spacing.lg,
   },
   farmsScroll: {
     marginTop: theme.spacing.sm,
