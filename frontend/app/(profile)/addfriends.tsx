@@ -1,6 +1,6 @@
 // (profile)/addfriends.tsx
-import { StyleSheet, View, TextInput, FlatList, TouchableOpacity } from 'react-native';
-import React, { useState } from 'react';
+import { StyleSheet, View, TextInput, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/useTheme';
@@ -9,19 +9,28 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
+import { supabase } from '@/lib/supabase';
+import { followUser, listFollowingIds, unfollowUser } from '@/lib/follows';
+import { useAuth } from '@/context/auth-context';
 
-// Mock data for friends
-const MOCK_USERS = [
-  { id: '1', name: 'Abeyah Calpatura', username: '@abeyahc' },
-  { id: '2', name: 'Edgar Robles', username: '@edgarrobles' },
-  { id: '3', name: 'Sean Griffin', username: '@seangriffin' },
-];
+type ProfileRow = {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+};
 
 export default function AddFriends() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { session } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [addedFriends, setAddedFriends] = useState<Set<string>>(new Set());
+  const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const userId = session?.user.id ?? null;
+
+  const normalizedQuery = useMemo(() => searchQuery.trim(), [searchQuery]);
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -29,15 +38,72 @@ export default function AddFriends() {
     router.back();
   };
 
-  const handleAddFriend = (userId: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    console.log('Add friend:', userId);
-    setAddedFriends(prev => {
-        const newSet = new Set(prev);
-        newSet.add(userId);
-        return newSet;
-    });
-    // Add your friend logic here
+  useEffect(() => {
+    if (!userId) return;
+
+    let isActive = true;
+    setLoading(true);
+
+    const timeout = setTimeout(async () => {
+      try {
+        const profileQuery = supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url")
+          .neq("id", userId)
+          .limit(50);
+
+        const filteredQuery = normalizedQuery
+          ? profileQuery.or(`username.ilike.%${normalizedQuery}%,full_name.ilike.%${normalizedQuery}%`)
+          : profileQuery;
+
+        const [{ data: profileData, error: profilesError }, newFollowingIds] = await Promise.all([
+          filteredQuery,
+          listFollowingIds(userId),
+        ]);
+
+        if (profilesError) throw profilesError;
+
+        if (!isActive) return;
+        setProfiles((profileData ?? []) as ProfileRow[]);
+        setFollowingIds(newFollowingIds);
+      } catch (e) {
+        if (!isActive) return;
+        const message = e instanceof Error ? e.message : "Unable to load users";
+        Alert.alert("Error", message);
+      } finally {
+        if (!isActive) return;
+        setLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeout);
+    };
+  }, [normalizedQuery, userId]);
+
+  const toggleFollow = async (targetUserId: string) => {
+    if (!userId) return;
+    const currentlyFollowing = followingIds.has(targetUserId);
+
+    try {
+      if (currentlyFollowing) {
+        await unfollowUser(userId, targetUserId);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setFollowingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(targetUserId);
+          return next;
+        });
+      } else {
+        await followUser(userId, targetUserId);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setFollowingIds((prev) => new Set(prev).add(targetUserId));
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Unable to update follow";
+      Alert.alert("Error", message);
+    }
   };
 
   return (
@@ -66,8 +132,13 @@ export default function AddFriends() {
         </View>
 
         {/* Friends List */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color={theme.brand.primary} />
+          </View>
+        ) : null}
         <FlatList
-          data={MOCK_USERS}
+          data={profiles}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.userItem}>
@@ -77,21 +148,30 @@ export default function AddFriends() {
               {/* User Info */}
               <View style={styles.userInfo}>
                 <ThemedText style={[styles.userName, { color: colors.text.primary }]}>
-                  {item.name}
+                  {item.full_name ?? item.username ?? "Unknown user"}
                 </ThemedText>
                 <ThemedText style={[styles.userHandle, { color: colors.text.secondary }]}>
-                  {item.username}
+                  {item.username ? `@${item.username}` : ""}
                 </ThemedText>
               </View>
 
               {/* Add Friend Button */}
               <TouchableOpacity
-                onPress={() => handleAddFriend(item.id)}
-                style={[styles.addButton, { backgroundColor: addedFriends.has(item.id)
-                    ? theme.brand.darkerOrange
-                    : theme.brand.primary, }]}
+                onPress={() => toggleFollow(item.id)}
+                style={[
+                  styles.addButton,
+                  {
+                    backgroundColor: followingIds.has(item.id)
+                      ? theme.brand.darkerOrange
+                      : theme.brand.primary,
+                  },
+                ]}
               >
-                <Ionicons name={addedFriends.has(item.id) ? "checkmark" : "person-add"} size={21} color={theme.neutral.white} />
+                <Ionicons
+                  name={followingIds.has(item.id) ? "checkmark" : "person-add"}
+                  size={21}
+                  color={theme.neutral.white}
+                />
               </TouchableOpacity>
             </View>
           )}
@@ -134,6 +214,10 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: theme.spacing.lg,
+  },
+  loadingContainer: {
+    paddingVertical: theme.spacing.sm,
+    alignItems: "center",
   },
   userItem: {
     flexDirection: 'row',
