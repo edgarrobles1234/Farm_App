@@ -1,4 +1,3 @@
-// (profile)/addfriends.tsx
 import { StyleSheet, View, TextInput, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ThemedText } from '@/components/themed-text';
@@ -9,26 +8,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
-import { supabase } from '@/lib/supabase';
-import { followUser, listFollowingIds, unfollowUser } from '@/lib/follows';
+import { followUser, searchUsers, unfollowUser, type SearchUser } from '@/lib/follows';
 import { useAuth } from '@/context/auth-context';
-
-type ProfileRow = {
-  id: string;
-  username: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-};
 
 export default function AddFriends() {
   const { colors } = useTheme();
   const router = useRouter();
   const { session } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [profiles, setProfiles] = useState<SearchUser[]>([]);
   const [loading, setLoading] = useState(false);
-  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
-  const userId = session?.user.id ?? null;
+  const accessToken = session?.access_token ?? null;
 
   const normalizedQuery = useMemo(() => searchQuery.trim(), [searchQuery]);
 
@@ -39,33 +29,16 @@ export default function AddFriends() {
   };
 
   useEffect(() => {
-    if (!userId) return;
+    if (!accessToken) return;
 
     let isActive = true;
     setLoading(true);
 
     const timeout = setTimeout(async () => {
       try {
-        const profileQuery = supabase
-          .from("profiles")
-          .select("id, username, full_name, avatar_url")
-          .neq("id", userId)
-          .limit(50);
-
-        const filteredQuery = normalizedQuery
-          ? profileQuery.or(`username.ilike.%${normalizedQuery}%,full_name.ilike.%${normalizedQuery}%`)
-          : profileQuery;
-
-        const [{ data: profileData, error: profilesError }, newFollowingIds] = await Promise.all([
-          filteredQuery,
-          listFollowingIds(userId),
-        ]);
-
-        if (profilesError) throw profilesError;
-
+        const results = await searchUsers(accessToken, normalizedQuery, 50);
         if (!isActive) return;
-        setProfiles((profileData ?? []) as ProfileRow[]);
-        setFollowingIds(newFollowingIds);
+        setProfiles(results);
       } catch (e) {
         if (!isActive) return;
         const message = e instanceof Error ? e.message : "Unable to load users";
@@ -80,25 +53,22 @@ export default function AddFriends() {
       isActive = false;
       clearTimeout(timeout);
     };
-  }, [normalizedQuery, userId]);
+  }, [accessToken, normalizedQuery]);
 
   const toggleFollow = async (targetUserId: string) => {
-    if (!userId) return;
-    const currentlyFollowing = followingIds.has(targetUserId);
+    if (!accessToken) return;
+    const current = profiles.find((p) => p.id === targetUserId);
+    const currentlyFollowing = current?.is_following ?? false;
 
     try {
       if (currentlyFollowing) {
-        await unfollowUser(userId, targetUserId);
+        await unfollowUser(accessToken, targetUserId);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setFollowingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(targetUserId);
-          return next;
-        });
+        setProfiles((prev) => prev.map((p) => (p.id === targetUserId ? { ...p, is_following: false } : p)));
       } else {
-        await followUser(userId, targetUserId);
+        await followUser(accessToken, targetUserId);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setFollowingIds((prev) => new Set(prev).add(targetUserId));
+        setProfiles((prev) => prev.map((p) => (p.id === targetUserId ? { ...p, is_following: true } : p)));
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unable to update follow";
@@ -161,14 +131,14 @@ export default function AddFriends() {
                 style={[
                   styles.addButton,
                   {
-                    backgroundColor: followingIds.has(item.id)
+                    backgroundColor: item.is_following
                       ? theme.brand.darkerOrange
                       : theme.brand.primary,
                   },
                 ]}
               >
                 <Ionicons
-                  name={followingIds.has(item.id) ? "checkmark" : "person-add"}
+                  name={item.is_following ? "checkmark" : "person-add"}
                   size={21}
                   color={theme.neutral.white}
                 />

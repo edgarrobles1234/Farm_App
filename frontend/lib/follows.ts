@@ -1,51 +1,39 @@
-import { supabase } from "@/lib/supabase";
+import { apiRequest } from "@/lib/api";
 
 export type FollowCounts = {
   followers: number;
   following: number;
 };
 
-export async function getFollowCounts(userId: string): Promise<FollowCounts> {
-  const [{ count: followersCount, error: followersError }, { count: followingCount, error: followingError }] =
-    await Promise.all([
-      supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
-      supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
-    ]);
+export type ProfileRow = {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+};
 
-  if (followersError) throw followersError;
-  if (followingError) throw followingError;
+export type MeResponse = {
+  profile: ProfileRow | null;
+  counts: FollowCounts;
+};
 
-  return {
-    followers: followersCount ?? 0,
-    following: followingCount ?? 0,
-  };
+export type SearchUser = ProfileRow & { is_following: boolean };
+
+export async function getMe(accessToken: string): Promise<MeResponse> {
+  return apiRequest<MeResponse>("/me", { accessToken });
 }
 
-export async function listFollowingIds(followerId: string): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from("follows")
-    .select("following_id")
-    .eq("follower_id", followerId);
-
-  if (error) throw error;
-  return new Set((data ?? []).map((row) => row.following_id as string));
+export async function searchUsers(accessToken: string, q: string, limit = 50): Promise<SearchUser[]> {
+  const query = new URLSearchParams();
+  if (q.trim()) query.set("q", q.trim());
+  query.set("limit", String(limit));
+  return apiRequest<SearchUser[]>(`/users/search?${query.toString()}`, { accessToken });
 }
 
-export async function followUser(followerId: string, followingId: string): Promise<void> {
-  const { error } = await supabase.from("follows").insert({
-    follower_id: followerId,
-    following_id: followingId,
-  });
-  if (error) throw error;
+export async function followUser(accessToken: string, followingId: string): Promise<void> {
+  await apiRequest<void>("/follow", { method: "POST", accessToken, body: { following_id: followingId } });
 }
 
-export async function unfollowUser(followerId: string, followingId: string): Promise<void> {
-  const { error } = await supabase
-    .from("follows")
-    .delete()
-    .eq("follower_id", followerId)
-    .eq("following_id", followingId);
-
-  if (error) throw error;
+export async function unfollowUser(accessToken: string, followingId: string): Promise<void> {
+  await apiRequest<void>(`/follow/${encodeURIComponent(followingId)}`, { method: "DELETE", accessToken });
 }
-

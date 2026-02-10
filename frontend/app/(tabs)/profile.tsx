@@ -1,4 +1,3 @@
-// (tabs)/profile.tsx
 import { StyleSheet, View, ScrollView, Alert } from "react-native";
 import React, { useCallback, useState } from "react";
 import { ThemedText } from "@/components/themed-text";
@@ -8,22 +7,14 @@ import { Button } from "@/components/ui/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth-context";
-import { supabase } from "@/lib/supabase";
-import { getFollowCounts } from "@/lib/follows";
+import { getMe, type ProfileRow } from "@/lib/follows";
 import { useFocusEffect } from "@react-navigation/native";
-
-type ProfileRow = {
-  id: string;
-  username: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-};
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { session } = useAuth();
-  const userId = session?.user.id ?? null;
+  const accessToken = session?.access_token ?? null;
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [counts, setCounts] = useState({ followers: 0, following: 0 });
   const [loading, setLoading] = useState(false);
@@ -35,27 +26,17 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!userId) return;
+      if (!accessToken) return;
       let isActive = true;
       setLoading(true);
 
       (async () => {
         try {
-          const [{ data: profileData, error: profileError }, followCounts] =
-            await Promise.all([
-              supabase
-                .from("profiles")
-                .select("id, username, full_name, avatar_url")
-                .eq("id", userId)
-                .maybeSingle(),
-              getFollowCounts(userId),
-            ]);
-
-          if (profileError) throw profileError;
+          const me = await getMe(accessToken);
           if (!isActive) return;
 
-          setProfile((profileData ?? null) as ProfileRow | null);
-          setCounts(followCounts);
+          setProfile(me.profile);
+          setCounts(me.counts);
         } catch (e) {
           if (!isActive) return;
           const message =
@@ -70,7 +51,7 @@ export default function ProfileScreen() {
       return () => {
         isActive = false;
       };
-    }, [userId]),
+    }, [accessToken]),
   );
 
   return (
