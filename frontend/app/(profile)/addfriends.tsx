@@ -116,7 +116,7 @@ export default function AddFriends() {
 
         {/* Title */}
         <ThemedText type="title" style={[styles.title, { color: colors.text.primary }]}>
-          Find your friends
+          Find people to follow
         </ThemedText>
 
         {/* Search Bar */}
@@ -124,14 +124,14 @@ export default function AddFriends() {
             <Ionicons name="search" size={30} color={colors.text.tertiary} style={styles.searchIcon} />
             <TextInput
                 style={[styles.searchInput, { color: colors.input.text }]}
-                placeholder="Search friends..."
+                placeholder="Search people..."
                 placeholderTextColor={colors.input.placeholder}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
             />
         </View>
 
-        {/* Friends List */}
+        {/* People List */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color={theme.brand.primary} />
@@ -155,7 +155,7 @@ export default function AddFriends() {
                 </ThemedText>
               </View>
 
-              {/* Add Friend Button */}
+              {/* Follow Button */}
               <TouchableOpacity
                 onPress={() => toggleFollow(item.id)}
                 style={[

@@ -29,7 +29,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleAddFriends = () => {
-    console.log("Going to AddFriends Page");
+    console.log("Going to Find People screen");
     router.navigate("/(profile)/addfriends");
   };
 
@@ -107,7 +107,7 @@ export default function ProfileScreen() {
           </View>
 
           {/* Stats and Button Section */}
-          <View style={styles.userfriendsSection}>
+        <View style={styles.userFollowSection}>
             {/* Left side: Name, Username, and Description */}
             <View style={styles.leftSection}>
               {/* Name and Username */}
@@ -169,15 +169,15 @@ export default function ProfileScreen() {
                 </View>
               </View>
 
-              {/* Add Friends Button */}
-              <Button
-                variant="primary"
-                onPress={handleAddFriends}
-                style={styles.addFriendsButton}
-                disabled={loading}
-              >
-                {loading ? "Loading..." : "Add Friends"}
-              </Button>
+            {/* Find People Button */}
+            <Button
+              variant="primary"
+              onPress={handleAddFriends}
+              style={styles.addFriendsButton}
+              disabled={loading}
+            >
+              {loading ? "Loading..." : "Find People"}
+            </Button>
             </View>
           </View>
         </View>
@@ -201,10 +201,10 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  userfriendsSection: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
+  userFollowSection: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
   container: {
     flex: 1,
   },
