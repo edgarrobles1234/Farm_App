@@ -1,91 +1,166 @@
-// (tabs)/profile.tsx
-import { StyleSheet, View, Image, ScrollView } from 'react-native';
-import React from 'react';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useTheme } from '@/hooks/useTheme';
-import { theme } from '@/constants/theme';
-import { Button } from '@/components/ui/button';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router'; 
+import { StyleSheet, View, ScrollView, Alert } from "react-native";
+import React, { useCallback, useState } from "react";
+import { ThemedText } from "@/components/themed-text";
+import { useTheme } from "@/hooks/useTheme";
+import { theme } from "@/constants/theme";
+import { Button } from "@/components/ui/button";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useAuth } from "@/context/auth-context";
+import { getMe, type ProfileRow } from "@/lib/follows";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { session } = useAuth();
+  const accessToken = session?.access_token ?? null;
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [counts, setCounts] = useState({ followers: 0, following: 0 });
+  const [loading, setLoading] = useState(false);
 
   const handleAddFriends = () => {
-    console.log("Going to AddFriends Page");
-    router.navigate('/(profile)/addfriends');
+    console.log("Going to Find People screen");
+    router.navigate("/(profile)/addfriends");
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!accessToken) return;
+      let isActive = true;
+      setLoading(true);
+
+      (async () => {
+        try {
+          const me = await getMe(accessToken);
+          if (!isActive) return;
+
+          setProfile(me.profile);
+          setCounts(me.counts);
+        } catch (e) {
+          if (!isActive) return;
+          const message =
+            e instanceof Error ? e.message : "Unable to load profile";
+          Alert.alert("Error", message);
+        } finally {
+          if (!isActive) return;
+          setLoading(false);
+        }
+      })();
+
+      return () => {
+        isActive = false;
+      };
+    }, [accessToken]),
+  );
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      edges={["bottom"]}
+    >
       <ScrollView style={styles.container}>
         {/* Header Background */}
-        <View style={[styles.headerBackground, { backgroundColor: theme.brand.light }]} />
+        <View
+          style={[
+            styles.headerBackground,
+            { backgroundColor: theme.brand.light },
+          ]}
+        />
 
         {/* Profile Section */}
         <View style={styles.profileSection}>
           {/* Profile Image */}
-          <View style={[styles.profileImageContainer, { backgroundColor: colors.background }]}>
-            <View style={[styles.profileImage, { backgroundColor: theme.neutral[400] }]}>
+          <View
+            style={[
+              styles.profileImageContainer,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <View
+              style={[
+                styles.profileImage,
+                { backgroundColor: theme.neutral[400] },
+              ]}
+            >
               {/* Placeholder for profile image */}
             </View>
           </View>
 
           {/* Stats and Button Section */}
-        <View style={styles.userfriendsSection}>
-        {/* Left side: Name, Username, and Description */}
-        <View style={styles.leftSection}>
-            {/* Name and Username */}
-            <View style={styles.userInfo}>
-            <ThemedText type="title" style={styles.userName}>
-                Abeyah Calpatura
-            </ThemedText>
-            <ThemedText style={[styles.username, { color: colors.text.secondary }]}>
-                @abeyahc
-            </ThemedText>
-            </View>
-
-            {/* Description */}
-            <View style={styles.descriptionContainer}>
-            <ThemedText type="defaultSemiBold" style={styles.descriptionTitle}>
-                Description
-            </ThemedText>
-            <ThemedText style={[styles.descriptionText, { color: colors.text.secondary }]}>
-                Lorem Ipsum
-            </ThemedText>
-            </View>
-        </View>
-
-        {/* Right side: Stats and Button */}
-        <View style={styles.statsButtonSection}>
-            {/* Stats */}
-            <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-                <ThemedText style={styles.statNumber}>31</ThemedText>
-                <ThemedText style={[styles.statLabel, { color: colors.text.secondary }]}>
-                Followers
+        <View style={styles.userFollowSection}>
+            {/* Left side: Name, Username, and Description */}
+            <View style={styles.leftSection}>
+              {/* Name and Username */}
+              <View style={styles.userInfo}>
+                <ThemedText type="title" style={styles.userName}>
+                  {profile?.full_name ?? profile?.username ?? "Your profile"}
                 </ThemedText>
-            </View>
-            <View style={styles.statItem}>
-                <ThemedText style={styles.statNumber}>58</ThemedText>
-                <ThemedText style={[styles.statLabel, { color: colors.text.secondary }]}>
-                Following
+                <ThemedText
+                  style={[styles.username, { color: colors.text.secondary }]}
+                >
+                  {profile?.username ? `@${profile.username}` : ""}
                 </ThemedText>
-            </View>
+              </View>
+
+              {/* Description */}
+              <View style={styles.descriptionContainer}>
+                <ThemedText
+                  type="defaultSemiBold"
+                  style={styles.descriptionTitle}
+                >
+                  Description
+                </ThemedText>
+                <ThemedText
+                  style={[
+                    styles.descriptionText,
+                    { color: colors.text.secondary },
+                  ]}
+                >
+                  {loading
+                    ? "Loading..."
+                    : "Update your profile details in Settings."}
+                </ThemedText>
+              </View>
             </View>
 
-            {/* Add Friends Button */}
+            {/* Right side: Stats and Button */}
+            <View style={styles.statsButtonSection}>
+              {/* Stats */}
+              <View style={styles.statsContainer}>
+                <View style={styles.statItem}>
+                  <ThemedText style={styles.statNumber}>
+                    {counts.followers}
+                  </ThemedText>
+                  <ThemedText
+                    style={[styles.statLabel, { color: colors.text.secondary }]}
+                  >
+                    Followers
+                  </ThemedText>
+                </View>
+                <View style={styles.statItem}>
+                  <ThemedText style={styles.statNumber}>
+                    {counts.following}
+                  </ThemedText>
+                  <ThemedText
+                    style={[styles.statLabel, { color: colors.text.secondary }]}
+                  >
+                    Following
+                  </ThemedText>
+                </View>
+              </View>
+
+            {/* Find People Button */}
             <Button
-            variant="primary"
-            onPress={handleAddFriends}
-            style={styles.addFriendsButton}
+              variant="primary"
+              onPress={handleAddFriends}
+              style={styles.addFriendsButton}
+              disabled={loading}
             >
-            Add Friends
+              {loading ? "Loading..." : "Find People"}
             </Button>
-        </View>
-        </View>
+            </View>
+          </View>
         </View>
 
         {/* My Recipes Header - Placeholder for future section */}
@@ -95,7 +170,7 @@ export default function ProfileScreen() {
           </ThemedText>
           <Button
             variant="primary"
-            onPress={() => console.log('See All')}
+            onPress={() => console.log("See All")}
             style={styles.seeAllButton}
           >
             See All
@@ -107,7 +182,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  userfriendsSection: {
+  userFollowSection: {
       flexDirection: "row",
       justifyContent: "space-between",
     },
@@ -120,14 +195,14 @@ const styles = StyleSheet.create({
   },
   headerBackground: {
     height: 133,
-    width: '100%',
+    width: "100%",
   },
   profileSection: {
     paddingHorizontal: theme.spacing.lg,
     marginTop: -60,
   },
   profileImageContainer: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     borderRadius: 60,
     padding: 4,
   },
@@ -137,15 +212,15 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   statsButtonSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: theme.spacing.sm,
   },
   statsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: theme.spacing.md,
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   statNumber: {
     fontSize: theme.typography.fontSizes.h3,
@@ -181,9 +256,9 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.h4,
   },
   recipesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: theme.spacing.lg,
     marginTop: theme.spacing.md,
   },

@@ -1,20 +1,91 @@
 import os
 
+import jwt
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from jwt import InvalidTokenError
+from pydantic import BaseModel, Field
 from supabase import Client, create_client
 
 load_dotenv()
 
 supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_KEY")
+supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
+supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
 
-if not supabase_url or not supabase_key:
-    raise RuntimeError("Missing SUPABASE_URL or SUPABASE_KEY in backend/.env")
+if not supabase_url or not supabase_service_role_key:
+    raise RuntimeError("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in backend/.env")
 
-supabase: Client = create_client(supabase_url, supabase_key)
+supabase: Client = create_client(supabase_url, supabase_service_role_key)
 
 app = FastAPI(title="Villam API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+def _get_bearer_token(request: Request) -> str:
+    header = request.headers.get("authorization") or request.headers.get("Authorization")
+    if not header or not header.lower().startswith("bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
+    return header.split(" ", 1)[1].strip()
+
+
+def get_current_user_id(request: Request) -> str:
+    if not supabase_jwt_secret:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="SUPABASE_JWT_SECRET not set")
+
+    token = _get_bearer_token(request)
+    try:
+        payload = jwt.decode(token, supabase_jwt_secret, algorithms=["HS256"], options={"verify_aud": False})
+    except InvalidTokenError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+    return str(user_id)
+
+
+def _safe_count(resp) -> int:
+    count = getattr(resp, "count", None)
+    if isinstance(count, int):
+        return count
+    data = getattr(resp, "data", None)
+    if isinstance(data, list):
+        return len(data)
+    return 0
+
+
+class FollowRequest(BaseModel):
+    following_id: str = Field(..., min_length=1)
+
+
+class ProfileOut(BaseModel):
+    id: str
+    username: str | None = None
+    full_name: str | None = None
+    avatar_url: str | None = None
+
+
+class SearchUserOut(ProfileOut):
+    is_following: bool
+
+
+class CountsOut(BaseModel):
+    followers: int
+    following: int
+
+
+class MeOut(BaseModel):
+    profile: ProfileOut | None
+    counts: CountsOut
 
 
 @app.get("/health")
@@ -24,5 +95,77 @@ def health_check() -> dict:
 
 @app.get("/db-check")
 def db_check() -> dict:
-    response = supabase.table("Users").select("*").limit(1).execute()
+    response = supabase.table("profiles").select("id").limit(1).execute()
     return {"data": response.data}
+
+
+@app.get("/me", response_model=MeOut)
+def get_me(user_id: str = Depends(get_current_user_id)) -> MeOut:
+    profile_resp = (
+        supabase.table("profiles")
+        .select("id,username,full_name,avatar_url")
+        .eq("id", user_id)
+        .maybe_single()
+        .execute()
+    )
+
+    followers_resp = supabase.table("follows").select("*", count="exact").eq("following_id", user_id).execute()
+    following_resp = supabase.table("follows").select("*", count="exact").eq("follower_id", user_id).execute()
+
+    profile_data = getattr(profile_resp, "data", None)
+    profile = ProfileOut(**profile_data) if isinstance(profile_data, dict) else None
+
+    return MeOut(
+        profile=profile,
+        counts=CountsOut(followers=_safe_count(followers_resp), following=_safe_count(following_resp)),
+    )
+
+
+@app.get("/users/search", response_model=list[SearchUserOut])
+def search_users(
+    q: str | None = None, limit: int = 50, user_id: str = Depends(get_current_user_id)
+) -> list[SearchUserOut]:
+    limit = max(1, min(limit, 100))
+
+    query = (
+        supabase.table("profiles")
+        .select("id,username,full_name,avatar_url")
+        .neq("id", user_id)
+        .limit(limit)
+    )
+
+    if q and q.strip():
+        term = q.strip()
+        query = query.or_(f"username.ilike.%{term}%,full_name.ilike.%{term}%")
+
+    profiles_resp = query.execute()
+    profiles = getattr(profiles_resp, "data", []) or []
+
+    following_resp = supabase.table("follows").select("following_id").eq("follower_id", user_id).execute()
+    following_ids = {
+        row.get("following_id")
+        for row in (getattr(following_resp, "data", []) or [])
+        if row.get("following_id")
+    }
+
+    results: list[SearchUserOut] = []
+    for row in profiles:
+        profile = ProfileOut(**row)
+        results.append(SearchUserOut(**profile.model_dump(), is_following=profile.id in following_ids))
+    return results
+
+
+@app.post("/follow", status_code=204)
+def follow(body: FollowRequest, user_id: str = Depends(get_current_user_id)) -> None:
+    if body.following_id == user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot follow yourself")
+
+    supabase.table("follows").upsert(
+        {"follower_id": user_id, "following_id": body.following_id},
+        on_conflict="follower_id,following_id",
+    ).execute()
+
+
+@app.delete("/follow/{following_id}", status_code=204)
+def unfollow(following_id: str, user_id: str = Depends(get_current_user_id)) -> None:
+    supabase.table("follows").delete().match({"follower_id": user_id, "following_id": following_id}).execute()
