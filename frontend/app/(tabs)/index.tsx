@@ -15,12 +15,29 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 import { addDistanceAndSort, type FarmWithCoords } from '@/lib/location';
+import { useAuth } from '@/context/auth-context';
 
 export default function HomeScreen() {
   const { colors, isDark } = useTheme();
+  const { session } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
   const { coords: userCoords, locationText } = useCurrentLocation();
+  const metadata = session?.user?.user_metadata as
+    | { name?: string; full_name?: string; username?: string }
+    | undefined;
+  const displayName =
+    metadata?.name?.trim() ||
+    metadata?.full_name?.trim() ||
+    metadata?.username?.trim() ||
+    session?.user?.email?.split('@')[0] ||
+    'there';
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
 
   // NOTE: Replace these coordinates with real farm coordinates later
   const farms: FarmWithCoords[] = [
@@ -70,10 +87,10 @@ export default function HomeScreen() {
             style={[styles.avatar, { backgroundColor: theme.brand.primary }]}
             onPress={() => router.push('/settings')}
           >
-            <ThemedText style={styles.aiText}>JS</ThemedText>
+            <ThemedText style={styles.aiText}>{initials || 'U'}</ThemedText>
           </TouchableOpacity>
           <ThemedText type="defaultSemiBold" style={[styles.welcome, { color: colors.text.primary }]}>
-            Welcome John Smith!
+            {`Welcome ${displayName}!`}
           </ThemedText>
         </ThemedView>
 
