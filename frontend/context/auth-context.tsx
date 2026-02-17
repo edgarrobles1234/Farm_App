@@ -28,6 +28,11 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function isInvalidRefreshTokenError(message?: string | null) {
+  if (!message) return false;
+  return message.toLowerCase().includes("invalid refresh token");
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [initialized, setInitialized] = useState(false);
@@ -35,8 +40,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    supabase.auth.getSession().then(({ data, error }) => {
+    supabase.auth.getSession().then(async ({ data, error }) => {
       if (!isMounted) return;
+      if (error && isInvalidRefreshTokenError(error.message)) {
+        await supabase.auth.signOut({ scope: "local" });
+        setSession(null);
+        setInitialized(true);
+        return;
+      }
       if (!error) {
         setSession(data.session ?? null);
       }
@@ -103,6 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       signOut: async () => {
         const { error } = await supabase.auth.signOut();
+        if (error && isInvalidRefreshTokenError(error.message)) {
+          await supabase.auth.signOut({ scope: "local" });
+          return null;
+        }
         return error?.message ?? null;
       },
     }),
