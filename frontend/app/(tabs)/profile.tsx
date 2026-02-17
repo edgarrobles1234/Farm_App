@@ -9,6 +9,27 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth-context";
 import { getMe, type ProfileRow } from "@/lib/follows";
 import { useFocusEffect } from "@react-navigation/native";
+import { RecipeCard } from '@/components/ui/recipes/recipecard';
+
+// Mock recipe data
+const recipes = [
+  {
+    id: '1',
+    title: 'Banana Blueberry',
+    rating: 4.7,
+    ratingsCount: 3000,
+    duration: '30 mins',
+    imageUrl: 'https://example.com/recipe1.jpg', // or undefined for grey placeholder
+  },
+  {
+    id: '2',
+    title: 'Strawberry Smoothie Bowl',
+    rating: 4.8,
+    ratingsCount: 2500,
+    duration: '15 mins',
+  },
+  // Add more recipes...
+];
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
@@ -163,7 +184,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* My Recipes Header - Placeholder for future section */}
+        {/* My Recipes Section */}
         <View style={styles.recipesHeader}>
           <ThemedText type="title" style={styles.recipesTitle}>
             My Recipes
@@ -176,6 +197,29 @@ export default function ProfileScreen() {
             See All
           </Button>
         </View>
+
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.recipesScroll}
+          contentContainerStyle={styles.recipesScrollContent}
+          pagingEnabled={false}
+        >
+          {recipes.slice(0, 4).map((recipe) => (
+            <RecipeCard
+              key={recipe.id}
+              {...recipe}
+              onPress={() => {
+                console.log('Recipe pressed:', recipe.id);
+                // Navigate to recipe detail
+              }}
+              onEditPress={() => {
+                console.log('Edit recipe:', recipe.id);
+                // Navigate to recipe edit
+              }}
+            />
+          ))}
+        </ScrollView>
       </ScrollView>
     </SafeAreaView>
   );
@@ -268,5 +312,13 @@ const styles = StyleSheet.create({
   seeAllButton: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
+  },
+  recipesScroll: {
+    marginTop: theme.spacing.sm,
+    paddingLeft: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+  },
+  recipesScrollContent: {
+    paddingRight: theme.spacing.lg,
   },
 });
