@@ -1,13 +1,10 @@
-import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
 import React, { useState } from 'react';
-import { router, useNavigation } from 'expo-router';
+import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { theme } from '@/constants/theme';
-import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FarmCard from '@/components/ui/farmcard';
@@ -17,13 +14,15 @@ import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 import { addDistanceAndSort } from '@/lib/location';
 import { useAuth } from '@/context/auth-context';
 import { useFarms } from '@/hooks/useFarms';
+import { RecipeCard } from '@/components/ui/recipes/recipecard';
+import { recipes } from '@/lib/recipes';
 
 // ✅ add these imports
 import { openDirections } from '@/lib/directions';
 import { formatAddress } from '@/lib/address';
 
 export default function HomeScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { session } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -55,7 +54,7 @@ export default function HomeScreen() {
     // TODO: Navigate to farm detail screen
   };
 
-  // ✅ UPDATED: opens Apple Maps (iOS) / Google Maps (Android)
+  // opens Apple Maps (iOS) / Google Maps (Android)
   const handleDirectionPress = async (farmId: number) => {
     const farm = farms.find((f) => f.id === farmId);
     if (!farm) return;
@@ -74,6 +73,16 @@ export default function HomeScreen() {
   const handleSharePress = (farmId: number) => {
     console.log('Share pressed:', farmId);
     // TODO: Share farm details
+  };
+
+  const handleRecipePress = (recipeId: string) => {
+    console.log('Recipe pressed:', recipeId);
+    // TODO: Navigate to recipe detail screen
+  };
+
+  const handleEditRecipePress = (recipeId: string) => {
+    console.log('Edit recipe:', recipeId);
+    // TODO: Navigate to recipe edit screen
   };
 
   return (
@@ -161,7 +170,20 @@ export default function HomeScreen() {
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             Top Recipes of the Week
           </ThemedText>
-          <ThemedView style={[styles.card, styles.recipesCard, { backgroundColor: colors.card }]} />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.recipesScroll}
+          >
+            {recipes.map((recipe) => (
+              <RecipeCard
+                key={recipe.id}
+                {...recipe}
+                onPress={() => handleRecipePress(recipe.id)}
+                onEditPress={() => handleEditRecipePress(recipe.id)}
+              />
+            ))}
+          </ScrollView>
         </ThemedView>
       </ScrollView>
     </SafeAreaView>
@@ -238,8 +260,10 @@ const styles = StyleSheet.create({
     marginLeft: -theme.spacing.md,
     paddingLeft: theme.spacing.md,
   },
-  recipesCard: {
-    height: 120,
+  recipesScroll: {
+    marginTop: theme.spacing.md,
+    marginLeft: -theme.spacing.md,
+    paddingLeft: theme.spacing.md,
   },
   bottomNav: {
     position: 'absolute',
