@@ -14,6 +14,10 @@ import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { addDistanceAndSort } from "@/lib/location";
 import { useFarms } from "@/hooks/useFarms";
 
+// ✅ add these imports
+import { openDirections } from "@/lib/directions";
+import { formatAddress } from "@/lib/address";
+
 type Region = {
   latitude: number;
   longitude: number;
@@ -96,9 +100,25 @@ export default function MapTab() {
     focusFarm(farmId);
   };
 
-  const handleDirectionPress = (farmId: number) => {
-    console.log("Direction pressed for farm:", farmId);
-    // TODO: Open maps with directions
+  // ✅ UPDATED: opens Apple Maps (iOS) / Google Maps (Android)
+  const handleDirectionPress = async (farmId: number) => {
+    const farm =
+      farmsWithDistance.find((f) => f.id === farmId) ||
+      farms.find((f) => f.id === farmId);
+
+    if (!farm) return;
+
+    const destination = formatAddress(farm);
+    const finalDest =
+      destination.trim().length > 0
+        ? destination
+        : `${farm.latitude},${farm.longitude}`;
+
+    try {
+      await openDirections(finalDest);
+    } catch (e) {
+      console.log("Could not open directions", e);
+    }
   };
 
   const handleSharePress = (farmId: number) => {
@@ -118,7 +138,11 @@ export default function MapTab() {
             key={farm.id}
             coordinate={{ latitude: farm.latitude, longitude: farm.longitude }}
             title={farm.name}
-            description={farm.products ?? ""}
+            description={
+              formatAddress(farm).trim().length > 0
+                ? formatAddress(farm)
+                : (farm.products ?? "")
+            }
             pinColor={farm.id === selectedFarmId ? theme.brand.primary : undefined}
             onPress={() => focusFarm(farm.id)}
           />
