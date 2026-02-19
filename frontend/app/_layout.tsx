@@ -7,12 +7,19 @@ import { useColorScheme } from 'react-native';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import * as SplashScreen from 'expo-splash-screen';
 
+// ✅ add these imports
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// ✅ create a single QueryClient instance
+const queryClient = new QueryClient();
+
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
 // Prevent splash from auto-hiding
 SplashScreen.preventAutoHideAsync();
+
 function AuthGate() {
   const { session, initialized } = useAuth();
   const segments = useSegments();
@@ -42,14 +49,7 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Load any resources or data here
-        // For example: fonts, auth state, etc.
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Minimum display time
-        
-        // Add any actual loading logic here:
-        // await loadFonts();
-        // await checkAuthState();
-        
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (e) {
         console.warn(e);
       } finally {
@@ -71,17 +71,19 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <AuthGate />
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(profile)" options={{ headerShown: false }} />
-          <Stack.Screen name="settings" options={{ headerShown: false }}/>
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AuthGate />
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(profile)" options={{ headerShown: false }} />
+            <Stack.Screen name="settings" options={{ headerShown: false }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
