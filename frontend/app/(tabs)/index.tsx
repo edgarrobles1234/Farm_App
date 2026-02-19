@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
@@ -16,6 +16,8 @@ import { useAuth } from '@/context/auth-context';
 import { useFarms } from '@/hooks/useFarms';
 import { RecipeCard } from '@/components/ui/recipes/recipecard';
 import { recipes } from '@/lib/recipes';
+import { GroceryListCard } from '@/components/ui/grocerylist/GroceryListCard';
+import { mockGroceryLists } from '@/mockdata/GroceryList';
 
 // ✅ add these imports
 import { openDirections } from '@/lib/directions';
@@ -48,6 +50,20 @@ export default function HomeScreen() {
     .join('');
 
   const farmsWithDistance = addDistanceAndSort(farms, userCoords);
+  const mostRecentGroceryList = useMemo(() => {
+    const toTime = (dateStr: string) => {
+      if (!dateStr) return 0;
+      if (dateStr.toLowerCase() === 'today') return Date.now();
+
+      const [m, d, yy] = dateStr.split('/').map(Number);
+      if (!m || !d || !yy) return 0;
+
+      const fullYear = yy < 100 ? 2000 + yy : yy;
+      return new Date(fullYear, m - 1, d).getTime();
+    };
+
+    return [...mockGroceryLists].sort((a, b) => toTime(b.date) - toTime(a.date))[0] ?? null;
+  }, []);
 
   const handleFarmPress = (farmId: number) => {
     console.log('Farm pressed:', farmId);
@@ -127,7 +143,11 @@ export default function HomeScreen() {
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             Your Grocery List
           </ThemedText>
-          <ThemedView style={[styles.card, styles.groceryCard, { backgroundColor: colors.card }]} />
+          {mostRecentGroceryList ? (
+            <GroceryListCard list={mostRecentGroceryList} style={styles.homeGroceryCard} />
+          ) : (
+            <ThemedText style={{ color: colors.text.tertiary }}>No grocery lists yet.</ThemedText>
+          )}
         </ThemedView>
 
         {/* Close Farms */}
@@ -136,7 +156,7 @@ export default function HomeScreen() {
             Close Farms Near You
           </ThemedText>
 
-          <ThemedText style={{ color: colors.text.tertiary, marginTop: 2, marginBottom: 8 }}>
+          <ThemedText style={{ color: colors.text.tertiary, marginTop: 2, marginBottom: 2 }}>
             📍 {locationText}
           </ThemedText>
 
@@ -246,19 +266,15 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.h3,
     fontWeight: theme.typography.fontWeights.bold,
     fontFamily: theme.typography.fontFamily,
-    marginBottom: theme.spacing.sm,
-  },
-  card: {
-    borderRadius: theme.borderRadius.lg,
-    marginTop: theme.spacing.md,
-  },
-  groceryCard: {
-    height: 80,
+    marginBottom: theme.spacing.xs,
   },
   farmsScroll: {
     marginTop: theme.spacing.md,
     marginLeft: -theme.spacing.md,
     paddingLeft: theme.spacing.md,
+  },
+  homeGroceryCard: {
+    marginBottom: 0,
   },
   recipesScroll: {
     marginTop: theme.spacing.md,
