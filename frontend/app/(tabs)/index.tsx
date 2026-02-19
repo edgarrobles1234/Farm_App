@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.h3,
     fontWeight: theme.typography.fontWeights.bold,
     fontFamily: theme.typography.fontFamily,
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
   },
   farmsScroll: {
     marginTop: theme.spacing.md,
