@@ -1,13 +1,10 @@
-import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
-import React, { useState } from 'react';
-import { router, useNavigation } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { theme } from '@/constants/theme';
-import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FarmCard from '@/components/ui/farmcard';
@@ -17,13 +14,17 @@ import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 import { addDistanceAndSort } from '@/lib/location';
 import { useAuth } from '@/context/auth-context';
 import { useFarms } from '@/hooks/useFarms';
+import { RecipeCard } from '@/components/ui/recipes/recipecard';
+import { recipes } from '@/lib/recipes';
+import { GroceryListCard } from '@/components/ui/grocerylist/GroceryListCard';
+import { mockGroceryLists } from '@/mockdata/GroceryList';
 
 // ✅ add these imports
 import { openDirections } from '@/lib/directions';
 import { formatAddress } from '@/lib/address';
 
 export default function HomeScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { session } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -49,13 +50,27 @@ export default function HomeScreen() {
     .join('');
 
   const farmsWithDistance = addDistanceAndSort(farms, userCoords);
+  const mostRecentGroceryList = useMemo(() => {
+    const toTime = (dateStr: string) => {
+      if (!dateStr) return 0;
+      if (dateStr.toLowerCase() === 'today') return Date.now();
+
+      const [m, d, yy] = dateStr.split('/').map(Number);
+      if (!m || !d || !yy) return 0;
+
+      const fullYear = yy < 100 ? 2000 + yy : yy;
+      return new Date(fullYear, m - 1, d).getTime();
+    };
+
+    return [...mockGroceryLists].sort((a, b) => toTime(b.date) - toTime(a.date))[0] ?? null;
+  }, []);
 
   const handleFarmPress = (farmId: number) => {
     console.log('Farm pressed:', farmId);
     // TODO: Navigate to farm detail screen
   };
 
-  // ✅ UPDATED: opens Apple Maps (iOS) / Google Maps (Android)
+  // opens Apple Maps (iOS) / Google Maps (Android)
   const handleDirectionPress = async (farmId: number) => {
     const farm = farms.find((f) => f.id === farmId);
     if (!farm) return;
@@ -74,6 +89,16 @@ export default function HomeScreen() {
   const handleSharePress = (farmId: number) => {
     console.log('Share pressed:', farmId);
     // TODO: Share farm details
+  };
+
+  const handleRecipePress = (recipeId: string) => {
+    console.log('Recipe pressed:', recipeId);
+    // TODO: Navigate to recipe detail screen
+  };
+
+  const handleEditRecipePress = (recipeId: string) => {
+    console.log('Edit recipe:', recipeId);
+    // TODO: Navigate to recipe edit screen
   };
 
   return (
@@ -118,7 +143,11 @@ export default function HomeScreen() {
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             Your Grocery List
           </ThemedText>
-          <ThemedView style={[styles.card, styles.groceryCard, { backgroundColor: colors.card }]} />
+          {mostRecentGroceryList ? (
+            <GroceryListCard list={mostRecentGroceryList} style={styles.homeGroceryCard} />
+          ) : (
+            <ThemedText style={{ color: colors.text.tertiary }}>No grocery lists yet.</ThemedText>
+          )}
         </ThemedView>
 
         {/* Close Farms */}
@@ -127,7 +156,7 @@ export default function HomeScreen() {
             Close Farms Near You
           </ThemedText>
 
-          <ThemedText style={{ color: colors.text.tertiary, marginTop: 2, marginBottom: 8 }}>
+          <ThemedText style={{ color: colors.text.tertiary, marginTop: 2, marginBottom: 2 }}>
             📍 {locationText}
           </ThemedText>
 
@@ -161,7 +190,20 @@ export default function HomeScreen() {
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             Top Recipes of the Week
           </ThemedText>
-          <ThemedView style={[styles.card, styles.recipesCard, { backgroundColor: colors.card }]} />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.recipesScroll}
+          >
+            {recipes.map((recipe) => (
+              <RecipeCard
+                key={recipe.id}
+                {...recipe}
+                onPress={() => handleRecipePress(recipe.id)}
+                onEditPress={() => handleEditRecipePress(recipe.id)}
+              />
+            ))}
+          </ScrollView>
         </ThemedView>
       </ScrollView>
     </SafeAreaView>
@@ -224,22 +266,20 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.h3,
     fontWeight: theme.typography.fontWeights.bold,
     fontFamily: theme.typography.fontFamily,
-    marginBottom: theme.spacing.sm,
-  },
-  card: {
-    borderRadius: theme.borderRadius.lg,
-    marginTop: theme.spacing.md,
-  },
-  groceryCard: {
-    height: 80,
+    marginBottom: theme.spacing.xs,
   },
   farmsScroll: {
     marginTop: theme.spacing.md,
     marginLeft: -theme.spacing.md,
     paddingLeft: theme.spacing.md,
   },
-  recipesCard: {
-    height: 120,
+  homeGroceryCard: {
+    marginBottom: 0,
+  },
+  recipesScroll: {
+    marginTop: theme.spacing.md,
+    marginLeft: -theme.spacing.md,
+    paddingLeft: theme.spacing.md,
   },
   bottomNav: {
     position: 'absolute',

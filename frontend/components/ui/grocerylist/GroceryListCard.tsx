@@ -1,5 +1,5 @@
 // components/GroceryListCard.tsx
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, type ViewStyle } from 'react-native';
 import React from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/useTheme';
@@ -10,9 +10,10 @@ import type { GroceryList } from '../../../mockdata/GroceryList';
 
 interface GroceryListCardProps {
   list: GroceryList;
+  style?: ViewStyle;
 }
 
-export function GroceryListCard({ list }: GroceryListCardProps) {
+export function GroceryListCard({ list, style }: GroceryListCardProps) {
   const { colors } = useTheme();
 
   const handlePress = () => {
@@ -27,7 +28,7 @@ export function GroceryListCard({ list }: GroceryListCardProps) {
   const previewItems = list.items.slice(0, 4);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, style]}>
       {/* Grey touchable card with items preview */}
       <TouchableOpacity 
         onPress={handlePress}

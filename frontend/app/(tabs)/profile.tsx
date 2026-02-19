@@ -10,26 +10,7 @@ import { useAuth } from "@/context/auth-context";
 import { getMe, type ProfileRow } from "@/lib/follows";
 import { useFocusEffect } from "@react-navigation/native";
 import { RecipeCard } from '@/components/ui/recipes/recipecard';
-
-// Mock recipe data
-const recipes = [
-  {
-    id: '1',
-    title: 'Banana Blueberry',
-    rating: 4.7,
-    ratingsCount: 3000,
-    duration: '30 mins',
-    imageUrl: 'https://example.com/recipe1.jpg', // or undefined for grey placeholder
-  },
-  {
-    id: '2',
-    title: 'Strawberry Smoothie Bowl',
-    rating: 4.8,
-    ratingsCount: 2500,
-    duration: '15 mins',
-  },
-  // Add more recipes...
-];
+import { recipes } from "@/lib/recipes";
 
 export default function ProfileScreen() {
   const { colors } = useTheme();

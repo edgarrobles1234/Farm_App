@@ -9,6 +9,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GroceryListCard } from '@/components/ui/grocerylist/GroceryListCard';
 import { mockGroceryLists } from '@/mockdata/GroceryList';
 
+const toTime = (dateStr: string) => {
+  if (!dateStr) return 0;
+  if (dateStr.toLowerCase() === "today") return Date.now();
+
+  const [m, d, yy] = dateStr.split("/").map(Number);
+  if (!m || !d || !yy) return 0;
+
+  const fullYear = yy < 100 ? 2000 + yy : yy;
+  return new Date(fullYear, m - 1, d).getTime();
+};
+
 export default function GroceryListScreen() {
   const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
