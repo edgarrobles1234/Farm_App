@@ -14,8 +14,9 @@ import FarmCard from '@/components/ui/farmcard';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useCurrentLocation } from '@/hooks/useCurrentLocation';
-import { addDistanceAndSort, type FarmWithCoords } from '@/lib/location';
+import { addDistanceAndSort } from '@/lib/location';
 import { useAuth } from '@/context/auth-context';
+import { useFarms } from '@/hooks/useFarms';
 
 export default function HomeScreen() {
   const { colors, isDark } = useTheme();
@@ -23,43 +24,26 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { coords: userCoords, locationText } = useCurrentLocation();
+
+  const { data: farms = [], isLoading: farmsLoading, error: farmsError } = useFarms();
+
   const metadata = session?.user?.user_metadata as
     | { name?: string; full_name?: string; username?: string }
     | undefined;
+
   const displayName =
     metadata?.name?.trim() ||
     metadata?.full_name?.trim() ||
     metadata?.username?.trim() ||
     session?.user?.email?.split('@')[0] ||
     'there';
+
   const initials = displayName
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('');
-
-  // NOTE: Replace these coordinates with real farm coordinates later
-  const farms: FarmWithCoords[] = [
-    {
-      id: 1,
-      name: "Sean's Farm",
-      rating: 4.9,
-      reviews: 209,
-      products: 'Sells carrots, strawberries, etc.',
-      latitude: 34.0522,
-      longitude: -118.2437,
-    },
-    {
-      id: 2,
-      name: 'Green Valley Farm',
-      rating: 4.9,
-      reviews: 209,
-      products: 'Sells carrots, strawbe...',
-      latitude: 34.0407,
-      longitude: -120.2468,
-    },
-  ];
 
   const farmsWithDistance = addDistanceAndSort(farms, userCoords);
 
@@ -131,21 +115,29 @@ export default function HomeScreen() {
             📍 {locationText}
           </ThemedText>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.farmsScroll}>
-            {farmsWithDistance.map((farm) => (
-              <FarmCard
-                key={farm.id}
-                name={farm.name}
-                rating={farm.rating}
-                reviews={farm.reviews}
-                distance={farm.distanceMi != null ? `${farm.distanceMi.toFixed(1)} mi` : '…'}
-                products={farm.products}
-                onPress={() => handleFarmPress(farm.id)}
-                onDirectionPress={() => handleDirectionPress(farm.id)}
-                onSharePress={() => handleSharePress(farm.id)}
-              />
-            ))}
-          </ScrollView>
+          {farmsLoading ? (
+            <ThemedText style={{ color: colors.text.tertiary }}>Loading farms…</ThemedText>
+          ) : farmsError ? (
+            <ThemedText style={{ color: colors.text.tertiary }}>Could not load farms.</ThemedText>
+          ) : farmsWithDistance.length === 0 ? (
+            <ThemedText style={{ color: colors.text.tertiary }}>No farms available yet.</ThemedText>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.farmsScroll}>
+              {farmsWithDistance.map((farm) => (
+                <FarmCard
+                  key={farm.id}
+                  name={farm.name}
+                  rating={farm.rating}
+                  reviews={farm.reviews}
+                  distance={farm.distanceMi != null ? `${farm.distanceMi.toFixed(1)} mi` : '…'}
+                  products={farm.products}
+                  onPress={() => handleFarmPress(farm.id)}
+                  onDirectionPress={() => handleDirectionPress(farm.id)}
+                  onSharePress={() => handleSharePress(farm.id)}
+                />
+              ))}
+            </ScrollView>
+          )}
         </ThemedView>
 
         {/* Top Recipes */}
