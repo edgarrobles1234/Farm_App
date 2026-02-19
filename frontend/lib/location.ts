@@ -32,7 +32,14 @@ export type FarmWithCoords = {
   products: string;
   latitude: number;
   longitude: number;
+
+  street?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
 };
+
 
 export type FarmWithDistance = FarmWithCoords & { distanceMi: number | null };
 

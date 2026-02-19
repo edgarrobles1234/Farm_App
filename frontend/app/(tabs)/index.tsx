@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { router, useNavigation } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
@@ -18,13 +18,16 @@ import { addDistanceAndSort } from '@/lib/location';
 import { useAuth } from '@/context/auth-context';
 import { useFarms } from '@/hooks/useFarms';
 
+// ✅ add these imports
+import { openDirections } from '@/lib/directions';
+import { formatAddress } from '@/lib/address';
+
 export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const { session } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
   const { coords: userCoords, locationText } = useCurrentLocation();
-
   const { data: farms = [], isLoading: farmsLoading, error: farmsError } = useFarms();
 
   const metadata = session?.user?.user_metadata as
@@ -52,9 +55,20 @@ export default function HomeScreen() {
     // TODO: Navigate to farm detail screen
   };
 
-  const handleDirectionPress = (farmId: number) => {
-    console.log('Direction pressed for farm:', farmId);
-    // TODO: Open maps with directions
+  // ✅ UPDATED: opens Apple Maps (iOS) / Google Maps (Android)
+  const handleDirectionPress = async (farmId: number) => {
+    const farm = farms.find((f) => f.id === farmId);
+    if (!farm) return;
+
+    const destination = formatAddress(farm);
+    const finalDest =
+      destination.trim().length > 0 ? destination : `${farm.latitude},${farm.longitude}`;
+
+    try {
+      await openDirections(finalDest);
+    } catch (e) {
+      console.log('Could not open directions', e);
+    }
   };
 
   const handleSharePress = (farmId: number) => {
@@ -63,7 +77,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background}} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView style={styles.container}>
         {/* Header */}
         <ThemedView style={styles.header}>
@@ -79,14 +93,16 @@ export default function HomeScreen() {
         </ThemedView>
 
         {/* Search Bar */}
-        <View style={[
-          styles.searchContainer,
-          {
-            backgroundColor: colors.input.background,
-            borderColor: colors.border.light,
-            borderWidth: 1
-          }
-        ]}>
+        <View
+          style={[
+            styles.searchContainer,
+            {
+              backgroundColor: colors.input.background,
+              borderColor: colors.border.light,
+              borderWidth: 1,
+            },
+          ]}
+        >
           <Ionicons name="search" size={30} color={colors.text.tertiary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.input.text }]}
