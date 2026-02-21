@@ -7,6 +7,7 @@ import {
   TextInput,
   Keyboard,
   Platform,
+  Alert,
 } from 'react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
@@ -17,6 +18,8 @@ import { theme } from '@/constants/theme';
 import { mockGroceryLists, GroceryItem } from '@/mockdata/GroceryList';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/context/auth-context';
+import { createGroceryList } from '@/lib/grocery-lists';
 
 /* =========================
    TYPES
@@ -39,6 +42,8 @@ type Category = {
   items: ExtendedGroceryItem[];
 };
 
+const DEFAULT_CATEGORY_LABEL = 'Add Category Name';
+
 /* =========================
    SCREEN
 ========================= */
@@ -46,14 +51,30 @@ type Category = {
 export default function GroceryListDetailScreen() {
   const { id } = useLocalSearchParams();
   const { colors } = useTheme();
+  const { session } = useAuth();
+  const accessToken = session?.access_token ?? null;
 
-  const list = mockGroceryLists.find((l) => l.id === id);
+  const listId = Array.isArray(id) ? id[0] : id;
+  const isNewList = listId === 'new';
+  const list = isNewList ? undefined : mockGroceryLists.find((l) => l.id === listId);
 
-  const [items, setItems] = useState<ExtendedGroceryItem[]>(list?.items || []);
+  const [items, setItems] = useState<ExtendedGroceryItem[]>(
+    list?.items || [
+      {
+        id: Date.now().toString(),
+        name: '',
+        checked: false,
+        category: DEFAULT_CATEGORY_LABEL,
+        isPinned: false,
+        textStyle: {},
+      },
+    ]
+  );
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [categoryNameDrafts, setCategoryNameDrafts] = useState<Record<string, string>>({});
   const [isPinned, setIsPinned] = useState(list?.isPinned || false);
-  const [title, setTitle] = useState(list?.title || '');
+  const [title, setTitle] = useState(list?.title);
+  const [isSaving, setIsSaving] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
 
@@ -94,7 +115,7 @@ export default function GroceryListDetailScreen() {
     const map: Record<string, ExtendedGroceryItem[]> = {};
 
     items.forEach((item) => {
-      const key = item.category || 'Uncategorized';
+      const key = item.category?.trim() || DEFAULT_CATEGORY_LABEL;
       if (!map[key]) map[key] = [];
       map[key].push(item);
     });
@@ -178,6 +199,49 @@ export default function GroceryListDetailScreen() {
     router.back();
   };
 
+  const handleSave = async () => {
+    if (!accessToken) {
+      Alert.alert('Not signed in', 'Please sign in again and try saving.');
+      return;
+    }
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      Alert.alert('Title required', 'Please add a title before saving.');
+      return;
+    }
+
+    const cleanItems = items
+      .map((item, index) => ({
+        name: item.name.trim(),
+        quantity: item.quantity ?? null,
+        unit: item.unit ?? null,
+        checked: item.checked,
+        category:
+          item.category?.trim() && item.category.trim() !== DEFAULT_CATEGORY_LABEL
+            ? item.category.trim()
+            : null,
+        isPinned: item.isPinned ?? false,
+        sortOrder: index,
+      }))
+      .filter((item) => item.name.length > 0);
+
+    setIsSaving(true);
+    try {
+      await createGroceryList(accessToken, {
+        title: trimmedTitle,
+        isPinned,
+        items: cleanItems,
+      });
+      router.replace('/(tabs)/grocerylist');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to save grocery list.';
+      Alert.alert('Save failed', message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   /* =========================
      TOOLBAR ACTIONS
   ========================= */
@@ -211,7 +275,7 @@ export default function GroceryListDetailScreen() {
      EMPTY STATE
   ========================= */
 
-  if (!list) {
+  if (!isNewList && !list) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <ThemedView style={styles.container}>
@@ -242,21 +306,34 @@ export default function GroceryListDetailScreen() {
           ),
           headerRight: () => (
             <View style={styles.headerRight}>
-              <TouchableOpacity onPress={toggleListPin}>
-                <Ionicons
-                  name={isPinned ? 'pin' : 'pin-outline'}
-                  size={24}
-                  color={isPinned ? theme.brand.red : colors.text.primary}
-                />
-              </TouchableOpacity>
+              {isNewList ? (
+                <TouchableOpacity
+                  onPress={handleSave}
+                  disabled={isSaving}
+                >
+                  <ThemedText style={[styles.saveButton, { color: isSaving ? colors.text.tertiary : theme.brand.primary }]}>
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </ThemedText>
+                </TouchableOpacity>
+              ) : (
+                <>
+                  <TouchableOpacity onPress={toggleListPin}>
+                    <Ionicons
+                      name={isPinned ? 'pin' : 'pin-outline'}
+                      size={24}
+                      color={isPinned ? theme.brand.red : colors.text.primary}
+                    />
+                  </TouchableOpacity>
 
-              <TouchableOpacity onPress={deleteList}>
-                <Ionicons
-                  name="trash-outline"
-                  size={24}
-                  color={colors.text.primary}
-                />
-              </TouchableOpacity>
+                  <TouchableOpacity onPress={deleteList}>
+                    <Ionicons
+                      name="trash-outline"
+                      size={24}
+                      color={colors.text.primary}
+                    />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           ),
           headerStyle: {
@@ -272,7 +349,7 @@ export default function GroceryListDetailScreen() {
         <ThemedView style={styles.container}>
           {/* Date */}
           <ThemedText style={[styles.date, { color: colors.text.secondary }]}>
-            {list.date}
+            {isNewList ? 'Today' : list?.date}
           </ThemedText>
 
           {/* Title */}
@@ -501,6 +578,10 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     gap: 16,
+  },
+  saveButton: {
+    fontSize: theme.typography.fontSizes.h4,
+    fontWeight: '700',
   },
   date: {
     fontSize: theme.typography.fontSizes.h4,
