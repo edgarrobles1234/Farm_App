@@ -88,6 +88,26 @@ class MeOut(BaseModel):
     counts: CountsOut
 
 
+class GroceryListItemIn(BaseModel):
+    name: str = Field(..., min_length=1)
+    quantity: float | None = None
+    unit: str | None = None
+    checked: bool = False
+    category: str | None = None
+    isPinned: bool = False
+    sortOrder: int = 0
+
+
+class GroceryListCreateIn(BaseModel):
+    title: str = Field(..., min_length=1)
+    isPinned: bool = False
+    items: list[GroceryListItemIn] = Field(default_factory=list)
+
+
+class GroceryListCreateOut(BaseModel):
+    id: str
+
+
 @app.get("/health")
 def health_check() -> dict:
     return {"status": "ok"}
