@@ -245,6 +245,8 @@ const RichTextInput = forwardRef<RichTextHandle, Props>(
   }
 );
 
+RichTextInput.displayName = 'RichTextInput';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

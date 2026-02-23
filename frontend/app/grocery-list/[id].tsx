@@ -73,7 +73,7 @@ export default function GroceryListDetailScreen() {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [categoryNameDrafts, setCategoryNameDrafts] = useState<Record<string, string>>({});
   const [isPinned, setIsPinned] = useState(list?.isPinned || false);
-  const [title, setTitle] = useState(list?.title);
+  const [title, setTitle] = useState(list?.title || (isNewList ? 'New Grocery List' : ''));
   const [isSaving, setIsSaving] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
