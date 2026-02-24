@@ -57,7 +57,7 @@ export default function Login() {
 
             <Animated.View entering={FadeInUp.delay(300)}>
               <Typography.H2 style={[styles.title, { color: colors.text.primary }]}>
-                Let's sign you in
+                Let&apos;s sign you in
               </Typography.H2>
             </Animated.View>
 
@@ -125,7 +125,7 @@ export default function Login() {
 
             <View style={styles.footer}>
               <Typography.H5 color={colors.text.secondary}>
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
               </Typography.H5>
               <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
                 <Typography.H5 color={theme.brand.primary} style={styles.link}>

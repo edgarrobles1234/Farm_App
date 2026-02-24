@@ -74,7 +74,7 @@ export function CreateTabButton(props: BottomTabBarButtonProps) {
 
   const handleChoice = (choice: CreateChoice) => {
     triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
-    const route = choice === "recipe" ? "/create?type=recipe" : "/grocery-list/new";
+    const route = choice === "recipe" ? "/recipe/new" : "/grocery-list/new";
     closeMenu();
     setTimeout(() => router.navigate(route), 150);
   };
