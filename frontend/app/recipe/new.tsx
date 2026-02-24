@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   TouchableOpacity,
@@ -9,13 +9,14 @@ import {
   Image,
   FlatList,
   Alert,
-  PanResponder,
   Animated,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as Haptics from "expo-haptics";
 import { Stack, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import DraggableFlatList, { type RenderItemParams } from "react-native-draggable-flatlist";
 
 import { ThemedView } from "@/components/themed-view";
 import { useTheme } from "@/hooks/useTheme";
@@ -151,33 +152,47 @@ const ingStyles = StyleSheet.create({
 function StepCard({
   step,
   index,
-  total,
   onUpdate,
   onDelete,
-  onMoveUp,
-  onMoveDown,
+  onDragStart,
+  isActive,
   onAddPhoto,
   onDeletePhoto,
   colors,
 }: {
   step: Step;
   index: number;
-  total: number;
   onUpdate: (id: string, text: string) => void;
   onDelete: (id: string) => void;
-  onMoveUp: (id: string) => void;
-  onMoveDown: (id: string) => void;
+  onDragStart: () => void;
+  isActive: boolean;
   onAddPhoto: (id: string) => void;
   onDeletePhoto: (stepId: string, photoIndex: number) => void;
   colors: any;
 }) {
+  const scaleValue = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(scaleValue, {
+      toValue: isActive ? 1.03 : 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [isActive, scaleValue]);
+
   return (
-    <View
-      style={[
-        stepStyles.card,
-        { backgroundColor: colors.input.background, borderColor: colors.border.default },
-      ]}
+    <Animated.View
+      style={{
+        transform: [{ scale: scaleValue }],
+      }}
+      pointerEvents="box-none"
     >
+      <View
+        style={[
+          stepStyles.card,
+          { backgroundColor: colors.input.background, borderColor: colors.border.default },
+        ]}
+      >
       {/* Header row */}
       <View style={stepStyles.header}>
         <View style={[stepStyles.stepBadge, { backgroundColor: theme.brand.primary }]}>
@@ -185,27 +200,18 @@ function StepCard({
         </View>
         <Text style={[stepStyles.stepLabel, { color: colors.text.secondary }]}>Step</Text>
 
-        {/* Reorder arrows */}
-        <View style={stepStyles.reorderBtns}>
-          <TouchableOpacity
-            disabled={index === 0}
-            onPress={() => onMoveUp(step.id)}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <Ionicons name="chevron-up" size={20} color={index === 0 ? colors.text.tertiary : colors.text.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            disabled={index === total - 1}
-            onPress={() => onMoveDown(step.id)}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <Ionicons
-              name="chevron-down"
-              size={20}
-              color={index === total - 1 ? colors.text.tertiary : colors.text.primary}
-            />
-          </TouchableOpacity>
-        </View>
+        {/* Drag handle */}
+        <TouchableOpacity
+          onLongPress={onDragStart}
+          delayLongPress={120}
+          style={[
+            stepStyles.dragHandleButton,
+            { backgroundColor: colors.background, borderColor: colors.border.default },
+          ]}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <Ionicons name="reorder-three-outline" size={20} color={colors.text.secondary} />
+        </TouchableOpacity>
 
         {/* Delete step */}
         <TouchableOpacity onPress={() => onDelete(step.id)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
@@ -250,7 +256,8 @@ function StepCard({
           <Text style={[stepStyles.addPhotoLabel, { color: theme.brand.primary }]}>Photo</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -261,6 +268,7 @@ const stepStyles = StyleSheet.create({
     borderWidth: 1.5,
     padding: 14,
     gap: 10,
+    marginBottom: theme.spacing.sm,
   },
   header: {
     flexDirection: "row",
@@ -276,7 +284,14 @@ const stepStyles = StyleSheet.create({
   },
   stepNum: { color: "#fff", fontSize: 13, fontWeight: "700" },
   stepLabel: { flex: 1, fontSize: 13, fontWeight: "600" },
-  reorderBtns: { flexDirection: "row", gap: 2 },
+  dragHandleButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   textArea: {
     fontSize: 14,
     lineHeight: 20,
@@ -340,6 +355,7 @@ const sectionStyles = StyleSheet.create({
 
 export default function NewRecipeScreen() {
   const { colors } = useTheme();
+  const [isDraggingStep, setIsDraggingStep] = useState(false);
 
   // Cover media
   const [mediaUris, setMediaUris] = useState<string[]>([]);
@@ -404,18 +420,6 @@ export default function NewRecipeScreen() {
   const deleteStep = (id: string) =>
     setSteps((prev) => (prev.length > 1 ? prev.filter((s) => s.id !== id) : prev));
 
-  const moveStep = (id: string, dir: "up" | "down") => {
-    setSteps((prev) => {
-      const idx = prev.findIndex((s) => s.id === id);
-      if (dir === "up" && idx === 0) return prev;
-      if (dir === "down" && idx === prev.length - 1) return prev;
-      const next = [...prev];
-      const swap = dir === "up" ? idx - 1 : idx + 1;
-      [next[idx], next[swap]] = [next[swap], next[idx]];
-      return next;
-    });
-  };
-
   const addStepPhoto = async (stepId: string) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
@@ -438,6 +442,10 @@ export default function NewRecipeScreen() {
         s.id === stepId ? { ...s, photoUris: s.photoUris.filter((_, i) => i !== photoIndex) } : s
       )
     );
+  };
+
+  const triggerDragHaptic = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   };
 
   return (
@@ -468,7 +476,10 @@ export default function NewRecipeScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator
+          indicatorStyle="default"
+          persistentScrollbar
+          scrollEnabled={!isDraggingStep}
         >
           <ThemedView style={styles.container}>
 
@@ -634,24 +645,52 @@ export default function NewRecipeScreen() {
             <View style={styles.section}>
               <SectionHeader title="Steps" colors={colors} />
               <Text style={[styles.stepsHint, { color: colors.text.tertiary }]}>
-                Use ↑↓ to reorder • Tap "Photo" inside a step to attach images
+                Long press and drag to reorder • Tap &quot;Photo&quot; inside a step to attach images
               </Text>
 
-              {steps.map((step, index) => (
-                <StepCard
-                  key={step.id}
-                  step={step}
-                  index={index}
-                  total={steps.length}
-                  onUpdate={updateStep}
-                  onDelete={deleteStep}
-                  onMoveUp={(id) => moveStep(id, "up")}
-                  onMoveDown={(id) => moveStep(id, "down")}
-                  onAddPhoto={addStepPhoto}
-                  onDeletePhoto={deleteStepPhoto}
-                  colors={colors}
-                />
-              ))}
+              <DraggableFlatList
+                data={steps}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item, drag, isActive }: RenderItemParams<Step>) => {
+                  const currentIndex = steps.findIndex((s) => s.id === item.id);
+                  return (
+                    <StepCard
+                      step={item}
+                      index={currentIndex >= 0 ? currentIndex : 0}
+                      onUpdate={updateStep}
+                      onDelete={deleteStep}
+                      onDragStart={() => {
+                        triggerDragHaptic();
+                        drag();
+                      }}
+                      isActive={isActive}
+                      onAddPhoto={addStepPhoto}
+                      onDeletePhoto={deleteStepPhoto}
+                      colors={colors}
+                    />
+                  );
+                }}
+                onDragEnd={({ data }) => {
+                  triggerDragHaptic();
+                  setSteps(data);
+                  setIsDraggingStep(false);
+                }}
+                onDragBegin={() => {
+                  triggerDragHaptic();
+                  setIsDraggingStep(true);
+                }}
+                onRelease={() => {
+                  triggerDragHaptic();
+                  setIsDraggingStep(false);
+                }}
+                activationDistance={4}
+                autoscrollThreshold={70}
+                autoscrollSpeed={180}
+                dragItemOverflow={false}
+                scrollEnabled={false}
+                containerStyle={styles.stepsList}
+                contentContainerStyle={styles.stepsListContent}
+              />
 
               <TouchableOpacity style={[styles.addRowBtn, { borderColor: theme.brand.primary }]} onPress={addStep}>
                 <Ionicons name="add" size={18} color={theme.brand.primary} />
@@ -816,6 +855,10 @@ const styles = StyleSheet.create({
   },
   addRowLabel: { fontSize: 14, fontWeight: "600" },
   stepsHint: { fontSize: 12, marginTop: -4 },
+  stepsList: { width: "100%" },
+  stepsListContent: {
+    paddingVertical: theme.spacing.xs,
+  },
 
   // Header publish button
   publishBtn: {
