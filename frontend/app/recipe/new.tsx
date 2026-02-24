@@ -359,6 +359,7 @@ export default function NewRecipeScreen() {
 
   // Cover media
   const [mediaUris, setMediaUris] = useState<string[]>([]);
+  const [extraMediaUris, setExtraMediaUris] = useState<string[]>([]);
 
   // Basic info
   const [title, setTitle] = useState("");
@@ -382,18 +383,22 @@ export default function NewRecipeScreen() {
   const totalDisplay = totalMins > 0 ? `${totalMins} min` : "—";
 
   // ── Cover media handlers
-  const handleMediaUpload = async () => {
+  const pickMediaFromLibrary = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") return;
+    if (status !== "granted") return [];
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsMultipleSelection: true,
       quality: 0.8,
     });
-    if (!result.canceled) {
-      const uris = result.assets.map((a) => a.uri);
-      setMediaUris((prev) => [...prev, ...uris]);
-    }
+    if (result.canceled) return [];
+    return result.assets.map((a) => a.uri);
+  };
+
+  const handleMediaUpload = async () => {
+    const uris = await pickMediaFromLibrary();
+    if (uris.length === 0) return;
+    setMediaUris((prev) => [...prev, ...uris]);
   };
 
   const handleDeleteMedia = (index: number) => {
@@ -561,18 +566,6 @@ export default function NewRecipeScreen() {
                 style={[styles.input, { color: colors.text.primary }]}
               />
             </View>
-
-            {/* ── Add more cover media */}
-            {mediaUris.length > 0 && (
-              <TouchableOpacity
-                style={[styles.addMoreBox, { backgroundColor: colors.input.background, borderColor: theme.brand.darkerOrange }]}
-                onPress={handleMediaUpload}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="add-circle" size={48} color={theme.brand.primary} />
-                <Text style={[styles.uploadText, { color: colors.text.tertiary }]}>Add more</Text>
-              </TouchableOpacity>
-            )}
 
             {/* ═══════════════════════════════════════
                 ── Time & Servings
