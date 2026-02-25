@@ -19,7 +19,6 @@ import { recipes } from '@/lib/recipes';
 import { GroceryListCard } from '@/components/ui/grocerylist/GroceryListCard';
 import { mockGroceryLists } from '@/mockdata/GroceryList';
 
-// ✅ add these imports
 import { openDirections } from '@/lib/directions';
 import { formatAddress } from '@/lib/address';
 
@@ -75,14 +74,17 @@ export default function HomeScreen() {
     const farm = farms.find((f) => f.id === farmId);
     if (!farm) return;
 
-    const destination = formatAddress(farm);
-    const finalDest =
-      destination.trim().length > 0 ? destination : `${farm.latitude},${farm.longitude}`;
+    const hasRealAddress =
+      !!farm.street?.trim() && (!!farm.city?.trim() || !!farm.postal_code?.trim());
+
+    const finalDest = hasRealAddress
+      ? formatAddress(farm)
+      : `${farm.latitude},${farm.longitude}`;
 
     try {
       await openDirections(finalDest);
     } catch (e) {
-      console.log('Could not open directions', e);
+      console.log("Could not open directions", e);
     }
   };
 

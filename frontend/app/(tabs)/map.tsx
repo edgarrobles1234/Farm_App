@@ -14,7 +14,6 @@ import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { addDistanceAndSort } from "@/lib/location";
 import { useFarms } from "@/hooks/useFarms";
 
-// ✅ add these imports
 import { openDirections } from "@/lib/directions";
 import { formatAddress } from "@/lib/address";
 
@@ -100,19 +99,16 @@ export default function MapTab() {
     focusFarm(farmId);
   };
 
-  // ✅ UPDATED: opens Apple Maps (iOS) / Google Maps (Android)
   const handleDirectionPress = async (farmId: number) => {
-    const farm =
-      farmsWithDistance.find((f) => f.id === farmId) ||
-      farms.find((f) => f.id === farmId);
-
+    const farm = farms.find((f) => f.id === farmId);
     if (!farm) return;
 
-    const destination = formatAddress(farm);
-    const finalDest =
-      destination.trim().length > 0
-        ? destination
-        : `${farm.latitude},${farm.longitude}`;
+    const hasRealAddress =
+      !!farm.street?.trim() && (!!farm.city?.trim() || !!farm.postal_code?.trim());
+
+    const finalDest = hasRealAddress
+      ? formatAddress(farm)
+      : `${farm.latitude},${farm.longitude}`;
 
     try {
       await openDirections(finalDest);
