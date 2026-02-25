@@ -108,6 +108,43 @@ class GroceryListCreateOut(BaseModel):
     id: str
 
 
+def _get_following_ids(user_id: str) -> set[str]:
+    resp = (
+        supabase.table("follows")
+        .select("following_id")
+        .eq("follower_id", user_id)
+        .limit(1000)
+        .execute()
+    )
+    return {
+        row.get("following_id")
+        for row in (getattr(resp, "data", []) or [])
+        if row.get("following_id")
+    }
+
+
+def _get_profiles_by_ids(
+    ids: list[str], q: str | None = None, limit: int = 100
+) -> list[dict]:
+    if not ids:
+        return []
+
+    query = (
+        supabase.table("profiles")
+        .select("id,username,full_name,avatar_url")
+        .in_("id", ids)
+        .limit(limit)
+        .order("username", desc=False)
+    )
+
+    if q and q.strip():
+        term = q.strip()
+        query = query.or_(f"username.ilike.%{term}%,full_name.ilike.%{term}%")
+
+    resp = query.execute()
+    return getattr(resp, "data", []) or []
+
+
 @app.get("/health")
 def health_check() -> dict:
     return {"status": "ok"}
@@ -139,6 +176,65 @@ def get_me(user_id: str = Depends(get_current_user_id)) -> MeOut:
         profile=profile,
         counts=CountsOut(followers=_safe_count(followers_resp), following=_safe_count(following_resp)),
     )
+
+
+@app.get("/followers", response_model=list[SearchUserOut])
+def list_followers(
+    q: str | None = None, limit: int = 100, user_id: str = Depends(get_current_user_id)
+) -> list[SearchUserOut]:
+    limit = max(1, min(limit, 200))
+
+    rel_resp = (
+        supabase.table("follows")
+        .select("follower_id")
+        .eq("following_id", user_id)
+        .limit(limit)
+        .execute()
+    )
+    follower_ids = [
+        row.get("follower_id")
+        for row in (getattr(rel_resp, "data", []) or [])
+        if row.get("follower_id")
+    ]
+
+    following_ids = _get_following_ids(user_id)
+    profiles = _get_profiles_by_ids(follower_ids, q=q, limit=limit)
+
+    results: list[SearchUserOut] = []
+    for row in profiles:
+        profile = ProfileOut(**row)
+        results.append(
+            SearchUserOut(**profile.model_dump(), is_following=profile.id in following_ids)
+        )
+    return results
+
+
+@app.get("/following", response_model=list[SearchUserOut])
+def list_following(
+    q: str | None = None, limit: int = 100, user_id: str = Depends(get_current_user_id)
+) -> list[SearchUserOut]:
+    limit = max(1, min(limit, 200))
+
+    rel_resp = (
+        supabase.table("follows")
+        .select("following_id")
+        .eq("follower_id", user_id)
+        .limit(limit)
+        .execute()
+    )
+    following_list = [
+        row.get("following_id")
+        for row in (getattr(rel_resp, "data", []) or [])
+        if row.get("following_id")
+    ]
+
+    profiles = _get_profiles_by_ids(following_list, q=q, limit=limit)
+
+    results: list[SearchUserOut] = []
+    for row in profiles:
+        profile = ProfileOut(**row)
+        results.append(SearchUserOut(**profile.model_dump(), is_following=True))
+    return results
 
 
 @app.get("/users/search", response_model=list[SearchUserOut])
