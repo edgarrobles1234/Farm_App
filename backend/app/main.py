@@ -72,6 +72,7 @@ class ProfileOut(BaseModel):
     username: str | None = None
     full_name: str | None = None
     avatar_url: str | None = None
+    description: str | None = None
 
 
 class SearchUserOut(ProfileOut):
@@ -86,6 +87,10 @@ class CountsOut(BaseModel):
 class MeOut(BaseModel):
     profile: ProfileOut | None
     counts: CountsOut
+
+
+class UpdateMeIn(BaseModel):
+    description: str | None = Field(default=None, max_length=280)
 
 
 class GroceryListItemIn(BaseModel):
@@ -160,7 +165,7 @@ def db_check() -> dict:
 def get_me(user_id: str = Depends(get_current_user_id)) -> MeOut:
     profile_resp = (
         supabase.table("profiles")
-        .select("id,username,full_name,avatar_url")
+        .select("id,username,full_name,avatar_url,description")
         .eq("id", user_id)
         .maybe_single()
         .execute()
@@ -176,6 +181,15 @@ def get_me(user_id: str = Depends(get_current_user_id)) -> MeOut:
         profile=profile,
         counts=CountsOut(followers=_safe_count(followers_resp), following=_safe_count(following_resp)),
     )
+
+
+@app.patch("/me", response_model=MeOut)
+def update_me(body: UpdateMeIn, user_id: str = Depends(get_current_user_id)) -> MeOut:
+    supabase.table("profiles").upsert(
+        {"id": user_id, "description": body.description},
+        on_conflict="id",
+    ).execute()
+    return get_me(user_id)
 
 
 @app.get("/followers", response_model=list[SearchUserOut])

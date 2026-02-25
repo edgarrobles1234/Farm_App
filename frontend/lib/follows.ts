@@ -10,6 +10,7 @@ export type ProfileRow = {
   username: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  description?: string | null;
 };
 
 export type MeResponse = {
@@ -21,6 +22,10 @@ export type SearchUser = ProfileRow & { is_following: boolean };
 
 export async function getMe(accessToken: string): Promise<MeResponse> {
   return apiRequest<MeResponse>("/me", { accessToken });
+}
+
+export async function updateMyDescription(accessToken: string, description: string | null): Promise<MeResponse> {
+  return apiRequest<MeResponse>("/me", { method: "PATCH", accessToken, body: { description } });
 }
 
 export async function searchUsers(accessToken: string, q: string, limit = 50): Promise<SearchUser[]> {
