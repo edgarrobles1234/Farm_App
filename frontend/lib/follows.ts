@@ -30,6 +30,20 @@ export async function searchUsers(accessToken: string, q: string, limit = 50): P
   return apiRequest<SearchUser[]>(`/users/search?${query.toString()}`, { accessToken });
 }
 
+export async function listFollowers(accessToken: string, q: string, limit = 100): Promise<SearchUser[]> {
+  const query = new URLSearchParams();
+  if (q.trim()) query.set("q", q.trim());
+  query.set("limit", String(limit));
+  return apiRequest<SearchUser[]>(`/followers?${query.toString()}`, { accessToken });
+}
+
+export async function listFollowing(accessToken: string, q: string, limit = 100): Promise<SearchUser[]> {
+  const query = new URLSearchParams();
+  if (q.trim()) query.set("q", q.trim());
+  query.set("limit", String(limit));
+  return apiRequest<SearchUser[]>(`/following?${query.toString()}`, { accessToken });
+}
+
 export async function followUser(accessToken: string, followingId: string): Promise<void> {
   await apiRequest<void>("/follow", { method: "POST", accessToken, body: { following_id: followingId } });
 }

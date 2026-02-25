@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, Alert } from "react-native";
+import { StyleSheet, View, ScrollView, Alert, Pressable } from "react-native";
 import React, { useCallback, useState } from "react";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/useTheme";
@@ -130,7 +130,10 @@ export default function ProfileScreen() {
             <View style={styles.statsButtonSection}>
               {/* Stats */}
               <View style={styles.statsContainer}>
-                <View style={styles.statItem}>
+                <Pressable
+                  style={styles.statItem}
+                  onPress={() => router.navigate("/(profile)/followers")}
+                >
                   <ThemedText style={styles.statNumber}>
                     {counts.followers}
                   </ThemedText>
@@ -139,8 +142,11 @@ export default function ProfileScreen() {
                   >
                     Followers
                   </ThemedText>
-                </View>
-                <View style={styles.statItem}>
+                </Pressable>
+                <Pressable
+                  style={styles.statItem}
+                  onPress={() => router.navigate("/(profile)/following")}
+                >
                   <ThemedText style={styles.statNumber}>
                     {counts.following}
                   </ThemedText>
@@ -149,7 +155,7 @@ export default function ProfileScreen() {
                   >
                     Following
                   </ThemedText>
-                </View>
+                </Pressable>
               </View>
 
             {/* Find People Button */}
