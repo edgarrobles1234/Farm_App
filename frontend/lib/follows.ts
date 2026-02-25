@@ -10,6 +10,7 @@ export type ProfileRow = {
   username: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  description?: string | null;
 };
 
 export type MeResponse = {
@@ -23,11 +24,29 @@ export async function getMe(accessToken: string): Promise<MeResponse> {
   return apiRequest<MeResponse>("/me", { accessToken });
 }
 
+export async function updateMyDescription(accessToken: string, description: string | null): Promise<MeResponse> {
+  return apiRequest<MeResponse>("/me", { method: "PATCH", accessToken, body: { description } });
+}
+
 export async function searchUsers(accessToken: string, q: string, limit = 50): Promise<SearchUser[]> {
   const query = new URLSearchParams();
   if (q.trim()) query.set("q", q.trim());
   query.set("limit", String(limit));
   return apiRequest<SearchUser[]>(`/users/search?${query.toString()}`, { accessToken });
+}
+
+export async function listFollowers(accessToken: string, q: string, limit = 100): Promise<SearchUser[]> {
+  const query = new URLSearchParams();
+  if (q.trim()) query.set("q", q.trim());
+  query.set("limit", String(limit));
+  return apiRequest<SearchUser[]>(`/followers?${query.toString()}`, { accessToken });
+}
+
+export async function listFollowing(accessToken: string, q: string, limit = 100): Promise<SearchUser[]> {
+  const query = new URLSearchParams();
+  if (q.trim()) query.set("q", q.trim());
+  query.set("limit", String(limit));
+  return apiRequest<SearchUser[]>(`/following?${query.toString()}`, { accessToken });
 }
 
 export async function followUser(accessToken: string, followingId: string): Promise<void> {

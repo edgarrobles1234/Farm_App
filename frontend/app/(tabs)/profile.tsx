@@ -1,5 +1,14 @@
-import { StyleSheet, View, ScrollView, Alert } from "react-native";
-import React, { useCallback, useState } from "react";
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  Alert,
+  Pressable,
+  Modal,
+  TextInput,
+} from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/useTheme";
 import { theme } from "@/constants/theme";
@@ -7,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth-context";
-import { getMe, type ProfileRow } from "@/lib/follows";
+import { getMe, updateMyDescription, type ProfileRow } from "@/lib/follows";
 import { useFocusEffect } from "@react-navigation/native";
 import { RecipeCard } from '@/components/ui/recipes/recipecard';
 import { recipes } from "@/lib/recipes";
@@ -20,10 +29,36 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [counts, setCounts] = useState({ followers: 0, following: 0 });
   const [loading, setLoading] = useState(false);
+  const [editDescOpen, setEditDescOpen] = useState(false);
+  const [descDraft, setDescDraft] = useState("");
+  const [savingDesc, setSavingDesc] = useState(false);
+
+  const currentDescription = useMemo(() => profile?.description ?? "", [profile?.description]);
 
   const handleAddFriends = () => {
     console.log("Going to Find People screen");
     router.navigate("/(profile)/addfriends");
+  };
+
+  const openEditDescription = () => {
+    setDescDraft(currentDescription);
+    setEditDescOpen(true);
+  };
+
+  const saveDescription = async () => {
+    if (!accessToken) return;
+    try {
+      setSavingDesc(true);
+      const next = await updateMyDescription(accessToken, descDraft.trim().length ? descDraft.trim() : null);
+      setProfile(next.profile);
+      setCounts(next.counts);
+      setEditDescOpen(false);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Unable to update description";
+      Alert.alert("Error", message);
+    } finally {
+      setSavingDesc(false);
+    }
   };
 
   useFocusEffect(
@@ -105,32 +140,42 @@ export default function ProfileScreen() {
                 </ThemedText>
               </View>
 
-              {/* Description */}
-              <View style={styles.descriptionContainer}>
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={styles.descriptionTitle}
-                >
-                  Description
-                </ThemedText>
-                <ThemedText
-                  style={[
-                    styles.descriptionText,
-                    { color: colors.text.secondary },
-                  ]}
-                >
-                  {loading
-                    ? "Loading..."
-                    : "Update your profile details in Settings."}
-                </ThemedText>
-              </View>
-            </View>
+	              {/* Description */}
+	              <View style={styles.descriptionContainer}>
+                  <View style={styles.descriptionHeader}>
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={styles.descriptionTitle}
+                    >
+                      Description
+                    </ThemedText>
+                    <Pressable onPress={openEditDescription} hitSlop={8}>
+                      <Ionicons name="pencil" size={16} color={colors.text.secondary} />
+                    </Pressable>
+                  </View>
+                  <Pressable onPress={openEditDescription}>
+                    <ThemedText
+                      style={[
+                        styles.descriptionText,
+                        { color: colors.text.secondary },
+                      ]}
+                    >
+                      {loading
+                        ? "Loading..."
+                        : (profile?.description?.trim().length ? profile.description : "Tap to add a description.")}
+                    </ThemedText>
+                  </Pressable>
+	              </View>
+	            </View>
 
             {/* Right side: Stats and Button */}
             <View style={styles.statsButtonSection}>
               {/* Stats */}
               <View style={styles.statsContainer}>
-                <View style={styles.statItem}>
+                <Pressable
+                  style={styles.statItem}
+                  onPress={() => router.navigate("/(profile)/followers")}
+                >
                   <ThemedText style={styles.statNumber}>
                     {counts.followers}
                   </ThemedText>
@@ -139,8 +184,11 @@ export default function ProfileScreen() {
                   >
                     Followers
                   </ThemedText>
-                </View>
-                <View style={styles.statItem}>
+                </Pressable>
+                <Pressable
+                  style={styles.statItem}
+                  onPress={() => router.navigate("/(profile)/following")}
+                >
                   <ThemedText style={styles.statNumber}>
                     {counts.following}
                   </ThemedText>
@@ -149,7 +197,7 @@ export default function ProfileScreen() {
                   >
                     Following
                   </ThemedText>
-                </View>
+                </Pressable>
               </View>
 
             {/* Find People Button */}
@@ -202,6 +250,55 @@ export default function ProfileScreen() {
           ))}
         </ScrollView>
       </ScrollView>
+
+      <Modal
+        visible={editDescOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditDescOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border.default }]}>
+            <ThemedText type="title" style={{ color: colors.text.primary }}>
+              Edit description
+            </ThemedText>
+
+            <TextInput
+              value={descDraft}
+              onChangeText={setDescDraft}
+              placeholder="Write something about you…"
+              placeholderTextColor={colors.input.placeholder}
+              multiline
+              maxLength={280}
+              style={[
+                styles.modalInput,
+                {
+                  color: colors.input.text,
+                  backgroundColor: colors.input.background,
+                  borderColor: colors.border.light,
+                },
+              ]}
+            />
+
+            <View style={styles.modalActions}>
+              <Button
+                variant="outline"
+                onPress={() => setEditDescOpen(false)}
+                disabled={savingDesc}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onPress={saveDescription}
+                disabled={savingDesc}
+              >
+                {savingDesc ? "Saving..." : "Save"}
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -273,12 +370,44 @@ const styles = StyleSheet.create({
   descriptionContainer: {
     marginTop: theme.spacing.md,
   },
+  descriptionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   descriptionTitle: {
     fontSize: theme.typography.fontSizes.h3,
     marginBottom: theme.spacing.xs,
   },
   descriptionText: {
     fontSize: theme.typography.fontSizes.h4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: theme.spacing.lg,
+  },
+  modalCard: {
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  modalInput: {
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    minHeight: 100,
+    textAlignVertical: "top",
+    fontSize: theme.typography.fontSizes.h4,
+    fontFamily: theme.typography.fontFamily,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: theme.spacing.sm,
   },
   recipesHeader: {
     flexDirection: "row",

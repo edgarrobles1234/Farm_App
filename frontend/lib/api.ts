@@ -8,7 +8,7 @@ type ApiError = {
 export async function apiRequest<T>(
   path: string,
   opts: {
-    method?: "GET" | "POST" | "DELETE";
+    method?: "GET" | "POST" | "DELETE" | "PATCH";
     accessToken: string;
     body?: unknown;
   }
@@ -36,4 +36,3 @@ export async function apiRequest<T>(
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
-
