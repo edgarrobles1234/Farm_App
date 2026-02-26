@@ -40,17 +40,13 @@ export default function MapTab() {
     [farms, userCoords]
   );
 
-  // Choose a fallback center if user location isn't available yet
   const fallbackCenter = useMemo(() => {
     if (userCoords) return userCoords;
     if (farms.length > 0) return { latitude: farms[0].latitude, longitude: farms[0].longitude };
-    // absolute fallback if nothing loaded yet
     return { latitude: 34.0522, longitude: -118.2437 };
   }, [userCoords, farms]);
 
-  // Initialize / update region based on user or farms
   useEffect(() => {
-    // don't override if user has focused a farm
     if (selectedFarmId != null) return;
 
     setRegion({
@@ -100,26 +96,25 @@ export default function MapTab() {
   };
 
   const handleDirectionPress = async (farmId: number) => {
-    const farm = farms.find((f) => f.id === farmId);
-    if (!farm) return;
+  const farm = farms.find((f) => f.id === farmId);
+  if (!farm) return;
 
-    const hasRealAddress =
-      !!farm.street?.trim() && (!!farm.city?.trim() || !!farm.postal_code?.trim());
+  const hasRealAddress =
+    !!farm.street?.trim() && (!!farm.city?.trim() || !!farm.postal_code?.trim());
 
-    const finalDest = hasRealAddress
-      ? formatAddress(farm)
-      : `${farm.latitude},${farm.longitude}`;
+  const finalDest = hasRealAddress
+    ? formatAddress(farm)
+    : `${farm.latitude},${farm.longitude}`;
 
-    try {
-      await openDirections(finalDest);
-    } catch (e) {
-      console.log("Could not open directions", e);
-    }
-  };
+  try {
+    await openDirections(finalDest);
+  } catch (e) {
+    console.log("Could not open directions", e);
+  }
+};
 
   const handleSharePress = (farmId: number) => {
     console.log("Share pressed:", farmId);
-    // TODO: Share farm details
   };
 
   if (!region) return <Text>Loading map…</Text>;
@@ -128,16 +123,13 @@ export default function MapTab() {
     <View style={{ flex: 1 }}>
       {/* MAP */}
       <MapView ref={mapRef} style={{ flex: 1 }} region={region} showsUserLocation>
-        {/* Farm markers */}
         {farms.map((farm) => (
           <Marker
             key={farm.id}
             coordinate={{ latitude: farm.latitude, longitude: farm.longitude }}
             title={farm.name}
             description={
-              formatAddress(farm).trim().length > 0
-                ? formatAddress(farm)
-                : (farm.products ?? "")
+              formatAddress(farm).trim().length > 0 ? formatAddress(farm) : (farm.products ?? "")
             }
             pinColor={farm.id === selectedFarmId ? theme.brand.primary : undefined}
             onPress={() => focusFarm(farm.id)}
@@ -186,7 +178,10 @@ export default function MapTab() {
         backgroundStyle={{ backgroundColor: colors.background }}
         handleIndicatorStyle={{ backgroundColor: colors.border.light }}
       >
-        <BottomSheetScrollView style={styles.sheetContent}>
+        <BottomSheetScrollView
+          contentContainerStyle={styles.sheetContentContainer}
+          showsVerticalScrollIndicator={false}
+        >
           {/* RECENTS */}
           <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Recents</Text>
           <View style={[styles.recentsBox, { backgroundColor: colors.card }]} />
@@ -209,7 +204,6 @@ export default function MapTab() {
             📍 {locationText}
           </Text>
 
-          {/* Loading / Error states */}
           {farmsLoading ? (
             <Text style={{ color: colors.text.tertiary }}>Loading farms…</Text>
           ) : farmsError ? (
@@ -221,10 +215,10 @@ export default function MapTab() {
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.farmsScroll}
-              contentContainerStyle={{ gap: theme.spacing.md, paddingRight: theme.spacing.md }}
+              contentContainerStyle={styles.farmsScrollContent}
             >
               {farmsWithDistance.map((farm) => (
-                <View key={farm.id} style={{ width: 300 }}>
+                <View key={farm.id} style={styles.farmCardWrapper}>
                   <FarmCard
                     name={farm.name}
                     rating={farm.rating}
@@ -280,10 +274,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     zIndex: 21,
   },
-  sheetContent: {
+
+  // BottomSheetScrollView padding belongs on contentContainerStyle
+  sheetContentContainer: {
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.md,
   },
+
   sectionTitle: {
     fontSize: theme.typography.fontSizes.h3,
     fontWeight: theme.typography.fontWeights.bold,
@@ -301,11 +298,24 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 30,
   },
+
+  // Edge-to-edge scroller: pull to edges; padding on content container
   farmsScroll: {
     marginTop: theme.spacing.sm,
-    marginLeft: -theme.spacing.md,
-    paddingLeft: theme.spacing.md,
+    marginHorizontal: -theme.spacing.md,
   },
+  farmsScrollContent: {
+    paddingHorizontal: theme.spacing.md,
+    paddingRight: theme.spacing.md,
+    paddingVertical: 6, // ✅ prevents shadow clipping / “first card looks different”
+    gap: theme.spacing.md,
+  },
+
+  // Parent controls width; FarmCard no longer needs width: 300
+  farmCardWrapper: {
+    width: 300,
+  },
+
   seeAllButton: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
