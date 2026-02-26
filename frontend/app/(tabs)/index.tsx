@@ -69,24 +69,23 @@ export default function HomeScreen() {
     // TODO: Navigate to farm detail screen
   };
 
-  // opens Apple Maps (iOS) / Google Maps (Android)
   const handleDirectionPress = async (farmId: number) => {
-    const farm = farms.find((f) => f.id === farmId);
-    if (!farm) return;
+  const farm = farms.find((f) => f.id === farmId);
+  if (!farm) return;
 
-    const hasRealAddress =
-      !!farm.street?.trim() && (!!farm.city?.trim() || !!farm.postal_code?.trim());
+  const hasRealAddress =
+    !!farm.street?.trim() && (!!farm.city?.trim() || !!farm.postal_code?.trim());
 
-    const finalDest = hasRealAddress
-      ? formatAddress(farm)
-      : `${farm.latitude},${farm.longitude}`;
+  const finalDest = hasRealAddress
+    ? formatAddress(farm)
+    : `${farm.latitude},${farm.longitude}`;
 
-    try {
-      await openDirections(finalDest);
-    } catch (e) {
-      console.log("Could not open directions", e);
-    }
-  };
+  try {
+    await openDirections(finalDest);
+  } catch (e) {
+    console.log("Could not open directions", e);
+  }
+};
 
   const handleSharePress = (farmId: number) => {
     console.log('Share pressed:', farmId);
@@ -169,10 +168,15 @@ export default function HomeScreen() {
           ) : farmsWithDistance.length === 0 ? (
             <ThemedText style={{ color: colors.text.tertiary }}>No farms available yet.</ThemedText>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.farmsScroll}>
-              {farmsWithDistance.map((farm) => (
+            <ScrollView
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  style={styles.farmsScroll}
+  contentContainerStyle={{ gap: theme.spacing.md, paddingRight: theme.spacing.md }}
+>
+  {farmsWithDistance.map((farm) => (
+          <View key={farm.id} style={{ width: 300 }}>
                 <FarmCard
-                  key={farm.id}
                   name={farm.name}
                   rating={farm.rating}
                   reviews={farm.reviews}
@@ -182,8 +186,9 @@ export default function HomeScreen() {
                   onDirectionPress={() => handleDirectionPress(farm.id)}
                   onSharePress={() => handleSharePress(farm.id)}
                 />
-              ))}
-            </ScrollView>
+              </View>
+            ))}
+        </ScrollView>
           )}
         </ThemedView>
 
@@ -271,9 +276,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   farmsScroll: {
-    marginTop: theme.spacing.md,
-    marginLeft: -theme.spacing.md,
-    paddingLeft: theme.spacing.md,
+  marginTop: theme.spacing.sm,
+  marginLeft: -theme.spacing.md,
+  paddingLeft: theme.spacing.md,
   },
   homeGroceryCard: {
     marginBottom: 0,
