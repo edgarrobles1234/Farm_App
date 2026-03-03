@@ -1,13 +1,15 @@
 // (tabs)/grocerylist.tsx
 import { StyleSheet, TextInput, View, FlatList } from 'react-native';
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/useTheme';
 import { theme } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GroceryListCard } from '@/components/ui/grocerylist/GroceryListCard';
-import { mockGroceryLists } from '@/mockdata/GroceryList';
+import { mockGroceryLists, type GroceryList } from '@/mockdata/GroceryList';
+import { useFocusEffect } from '@react-navigation/native';
+import { getLocalGroceryLists, type LocalGroceryList } from '@/lib/local-grocery-lists';
 
 const toTime = (dateStr: string) => {
   if (!dateStr) return 0;
@@ -23,14 +25,45 @@ const toTime = (dateStr: string) => {
 export default function GroceryListScreen() {
   const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
+  const [localLists, setLocalLists] = useState<LocalGroceryList[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+
+      const loadLocalLists = async () => {
+        const lists = await getLocalGroceryLists();
+        if (mounted) {
+          setLocalLists(lists);
+        }
+      };
+
+      loadLocalLists();
+
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
 
   const filteredLists = useMemo(() => {
-    if (!searchQuery.trim()) return mockGroceryLists;
-    
-    return mockGroceryLists.filter(list =>
-      list.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery]);
+    const localIds = new Set(localLists.map((list) => list.id));
+    const mergedLists: GroceryList[] = [
+      ...localLists,
+      ...mockGroceryLists.filter((list) => !localIds.has(list.id)),
+    ];
+
+    const sortedLists = mergedLists.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return toTime(b.date) - toTime(a.date);
+    });
+
+    if (!searchQuery.trim()) return sortedLists;
+
+    const normalized = searchQuery.trim().toLowerCase();
+    return sortedLists.filter((list) => list.title.toLowerCase().includes(normalized));
+  }, [localLists, searchQuery]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background}} edges={['top']}>

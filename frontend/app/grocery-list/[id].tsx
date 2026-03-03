@@ -2,12 +2,12 @@
 import {
   StyleSheet,
   View,
-  FlatList,
   TouchableOpacity,
   TextInput,
-  Keyboard,
   Platform,
   Alert,
+  ScrollView,
+  KeyboardAvoidingView,
 } from 'react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
@@ -18,8 +18,11 @@ import { theme } from '@/constants/theme';
 import { mockGroceryLists, GroceryItem } from '@/mockdata/GroceryList';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '@/context/auth-context';
-import { createGroceryList } from '@/lib/grocery-lists';
+import {
+  getLocalGroceryListById,
+  saveLocalGroceryList,
+  type LocalGroceryItem,
+} from '@/lib/local-grocery-lists';
 
 /* =========================
    TYPES
@@ -37,12 +40,14 @@ type ExtendedGroceryItem = GroceryItem & {
 
 type Category = {
   id: string;
-  name: string;
+  name: string | null; // null = flat/uncategorized (no checkbox, no header)
   isCollapsed: boolean;
   items: ExtendedGroceryItem[];
 };
 
-const DEFAULT_CATEGORY_LABEL = 'Add Category Name';
+const UNCATEGORIZED_KEY = '__uncategorized__';
+const DEFAULT_SUBCATEGORY_NAME = 'Category 1';
+const NEW_CATEGORY_PREFIX = '__newcat_';
 
 /* =========================
    SCREEN
@@ -51,100 +56,148 @@ const DEFAULT_CATEGORY_LABEL = 'Add Category Name';
 export default function GroceryListDetailScreen() {
   const { id } = useLocalSearchParams();
   const { colors } = useTheme();
-  const { session } = useAuth();
-  const accessToken = session?.access_token ?? null;
 
   const listId = Array.isArray(id) ? id[0] : id;
   const isNewList = listId === 'new';
-  const list = isNewList ? undefined : mockGroceryLists.find((l) => l.id === listId);
+  const mockList = isNewList ? undefined : mockGroceryLists.find((l) => l.id === listId);
 
-  const [items, setItems] = useState<ExtendedGroceryItem[]>(
-    list?.items || [
-      {
-        id: Date.now().toString(),
-        name: '',
-        checked: false,
-        category: DEFAULT_CATEGORY_LABEL,
-        isPinned: false,
-        textStyle: {},
-      },
-    ]
-  );
+  const [isLoadingList, setIsLoadingList] = useState(!isNewList);
+  const [listNotFound, setListNotFound] = useState(false);
+  const [displayDate, setDisplayDate] = useState(isNewList ? 'Today' : mockList?.date ?? '');
+  const [items, setItems] = useState<ExtendedGroceryItem[]>([
+    {
+      id: Date.now().toString(),
+      name: '',
+      checked: false,
+      category: DEFAULT_SUBCATEGORY_NAME,
+      isPinned: false,
+      textStyle: {},
+    },
+  ]);
+
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [categoryNameDrafts, setCategoryNameDrafts] = useState<Record<string, string>>({});
-  const [isPinned, setIsPinned] = useState(list?.isPinned || false);
-  const [title, setTitle] = useState(list?.title || (isNewList ? 'New Grocery List' : ''));
+  const [isPinned, setIsPinned] = useState(mockList?.isPinned || false);
+  const [title, setTitle] = useState(mockList?.title);
   const [isSaving, setIsSaving] = useState(false);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
 
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const itemRefs = useRef<Record<string, TextInput | null>>({});
+  const categoryInputRefs = useRef<Record<string, TextInput | null>>({});
+  const scrollRef = useRef<ScrollView | null>(null);
 
-  /* =========================
-     KEYBOARD HANDLING
-  ========================= */
+  const createEmptyItem = (category: string | null = DEFAULT_SUBCATEGORY_NAME): ExtendedGroceryItem => ({
+    id: Date.now().toString(),
+    name: '',
+    checked: false,
+    category,
+    isPinned: false,
+    textStyle: {},
+  });
+
+  const scrollToBottom = (delay = 120) => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, delay);
+  };
 
   useEffect(() => {
-    const showEvent =
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent =
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const loadList = async () => {
+      if (isNewList) {
+        setIsLoadingList(false);
+        return;
+      }
 
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-      setIsKeyboardVisible(true);
-    });
+      if (!listId || typeof listId !== 'string') {
+        setListNotFound(true);
+        setIsLoadingList(false);
+        return;
+      }
 
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-      setIsKeyboardVisible(false);
-    });
+      try {
+        const localList = await getLocalGroceryListById(listId);
+        const sourceList = localList ?? mockList;
 
-    return () => {
-      showSub.remove();
-      hideSub.remove();
+        if (!sourceList) {
+          setListNotFound(true);
+          return;
+        }
+
+        setItems(
+          sourceList.items.length > 0
+            ? sourceList.items.map((item) => ({
+                ...item,
+                category: item.category ?? null,
+              }))
+            : [createEmptyItem()]
+        );
+        setTitle(sourceList.title);
+        setIsPinned(Boolean(sourceList.isPinned));
+        setDisplayDate(sourceList.date || '');
+      } finally {
+        setIsLoadingList(false);
+      }
     };
-  }, []);
+
+    loadList();
+  }, [isNewList, listId, mockList]);
 
   /* =========================
      DERIVED CATEGORIES
   ========================= */
 
   const categories = useMemo<Category[]>(() => {
+    const uncategorized: ExtendedGroceryItem[] = [];
     const map: Record<string, ExtendedGroceryItem[]> = {};
+    const categoryOrder: string[] = [];
 
     items.forEach((item) => {
-      const key = item.category?.trim() || DEFAULT_CATEGORY_LABEL;
-      if (!map[key]) map[key] = [];
-      map[key].push(item);
+      if (!item.category) {
+        uncategorized.push(item);
+      } else {
+        const key = item.category.trim();
+        if (!map[key]) {
+          map[key] = [];
+          categoryOrder.push(key);
+        }
+        map[key].push(item);
+      }
     });
 
-    return Object.entries(map).map(([name, items]) => ({
-      id: name,
-      name,
-      isCollapsed: Boolean(collapsedCategories[name]),
-      items,
-    }));
+    const result: Category[] = [];
+
+    if (uncategorized.length > 0) {
+      result.push({
+        id: UNCATEGORIZED_KEY,
+        name: null,
+        isCollapsed: false,
+        items: uncategorized,
+      });
+    }
+
+    categoryOrder.forEach((name) => {
+      result.push({
+        id: name,
+        name,
+        isCollapsed: Boolean(collapsedCategories[name]),
+        items: map[name],
+      });
+    });
+
+    return result;
   }, [items, collapsedCategories]);
 
   /* =========================
      ACTIONS
   ========================= */
 
-  const updateItem = (
-    itemId: string,
-    updates: Partial<ExtendedGroceryItem>
-  ) => {
+  const updateItem = (itemId: string, updates: Partial<ExtendedGroceryItem>) => {
     setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, ...updates } : item
-      )
+      prev.map((item) => (item.id === itemId ? { ...item, ...updates } : item))
     );
   };
 
   const toggleItem = (itemId: string) => {
-    updateItem(itemId, { checked: !items.find(i => i.id === itemId)?.checked });
+    updateItem(itemId, { checked: !items.find((i) => i.id === itemId)?.checked });
   };
 
   const toggleItemPin = (itemId: string) => {
@@ -156,126 +209,167 @@ export default function GroceryListDetailScreen() {
   };
 
   const toggleCategory = (id: string) => {
-    setCollapsedCategories((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+    setCollapsedCategories((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const addNewItem = (categoryName: string) => {
-    const newItem: ExtendedGroceryItem = {
-      id: Date.now().toString(),
-      name: '',
-      checked: false,
-      category: categoryName,
-      isPinned: false,
-      textStyle: {},
-    };
-    
-    setItems([...items, newItem]);
-
-    // Focus the new item after state updates
+  const addNewItem = (categoryName: string | null) => {
+    const newItem = createEmptyItem(categoryName);
+    setItems((prev) => [...prev, newItem]);
     setTimeout(() => {
       itemRefs.current[newItem.id]?.focus();
+      scrollToBottom(0);
     }, 100);
   };
 
-  // IMPORTANT: propagate category rename to items
+  const removeItem = (itemId: string) => {
+    let focusTargetId: string | null = null;
+
+    setItems((prev) => {
+      if (prev.length <= 1) {
+        return prev;
+      }
+
+      const removeIndex = prev.findIndex((item) => item.id === itemId);
+      if (removeIndex === -1) {
+        return prev;
+      }
+
+      const next = prev.filter((item) => item.id !== itemId);
+      const fallbackIndex = Math.max(0, removeIndex - 1);
+      focusTargetId = next[fallbackIndex]?.id ?? next[0]?.id ?? null;
+      return next;
+    });
+
+    setTimeout(() => {
+      if (focusTargetId) {
+        itemRefs.current[focusTargetId]?.focus();
+      }
+    }, 50);
+  };
+
+  /** Add a brand-new named category section */
+  const addNewCategory = () => {
+    const newCategoryKey = `${NEW_CATEGORY_PREFIX}${Date.now()}`;
+    const newItem: ExtendedGroceryItem = createEmptyItem(newCategoryKey);
+    newItem.id = (Date.now() + 1).toString();
+
+    setItems((prev) => [...prev, newItem]);
+
+    setTimeout(() => {
+      setCategoryNameDrafts((prev) => ({ ...prev, [newCategoryKey]: '' }));
+      categoryInputRefs.current[newCategoryKey]?.focus();
+      scrollToBottom(0);
+    }, 150);
+  };
+
   const renameCategory = (oldName: string, newName: string) => {
     setItems((prev) =>
       prev.map((item) =>
-        item.category === oldName
-          ? { ...item, category: newName }
-          : item
+        item.category === oldName ? { ...item, category: newName } : item
       )
     );
+    // Update refs key
+    if (categoryInputRefs.current[oldName]) {
+      categoryInputRefs.current[newName] = categoryInputRefs.current[oldName];
+      delete categoryInputRefs.current[oldName];
+    }
   };
 
-  const toggleListPin = () => {
-    setIsPinned(!isPinned);
-  };
-
-  const deleteList = () => {
-    router.back();
-  };
-
-  const handleSave = async () => {
-    if (!accessToken) {
-      Alert.alert('Not signed in', 'Please sign in again and try saving.');
+  const deleteCategory = (categoryName: string) => {
+    const namedCategories = categories.filter((category) => category.name !== null);
+    if (namedCategories.length <= 1) {
+      Alert.alert('Cannot delete', 'Keep at least one subcategory in this list.');
       return;
     }
 
+    Alert.alert(
+      'Delete subcategory?',
+      `Delete "${categoryName}" and all its items?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setItems((prev) => prev.filter((item) => item.category !== categoryName));
+            setCategoryNameDrafts((prev) => {
+              const next = { ...prev };
+              delete next[categoryName];
+              return next;
+            });
+            setCollapsedCategories((prev) => {
+              const next = { ...prev };
+              delete next[categoryName];
+              return next;
+            });
+          },
+        },
+      ]
+    );
+  };
+
+  const toggleListPin = () => setIsPinned(!isPinned);
+  const deleteList = () => router.back();
+
+  const handleSave = async () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       Alert.alert('Title required', 'Please add a title before saving.');
       return;
     }
 
-    const cleanItems = items
+    const cleanItems: LocalGroceryItem[] = items
       .map((item, index) => ({
+        id: item.id || `${Date.now()}-${index}`,
         name: item.name.trim(),
         quantity: item.quantity ?? null,
         unit: item.unit ?? null,
         checked: item.checked,
         category:
-          item.category?.trim() && item.category.trim() !== DEFAULT_CATEGORY_LABEL
+          item.category && !item.category.startsWith(NEW_CATEGORY_PREFIX)
             ? item.category.trim()
             : null,
         isPinned: item.isPinned ?? false,
         sortOrder: index,
+        textStyle: item.textStyle ?? {},
       }))
       .filter((item) => item.name.length > 0);
 
     setIsSaving(true);
     try {
-      await createGroceryList(accessToken, {
+      await saveLocalGroceryList({
+        id: isNewList ? undefined : listId,
         title: trimmedTitle,
+        date: displayDate || undefined,
         isPinned,
         items: cleanItems,
       });
       router.replace('/(tabs)/grocerylist');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to save grocery list.';
+      const message =
+        error instanceof Error ? error.message : 'Unable to save grocery list locally.';
       Alert.alert('Save failed', message);
     } finally {
       setIsSaving(false);
     }
   };
 
-  /* =========================
-     TOOLBAR ACTIONS
-  ========================= */
-
-  const toggleTextStyle = (styleType: 'bold' | 'underline' | 'italic') => {
-    if (!focusedItemId) return;
-
-    const item = items.find(i => i.id === focusedItemId);
-    if (!item) return;
-
-    const currentStyle = item.textStyle || {};
-    
-    updateItem(focusedItemId, {
-      textStyle: {
-        ...currentStyle,
-        [styleType]: !currentStyle[styleType],
-      },
-    });
-  };
-
-  // Get current focused item's styles for button highlighting
-  const getFocusedItemStyles = () => {
-    if (!focusedItemId) return {};
-    const item = items.find(i => i.id === focusedItemId);
-    return item?.textStyle || {};
-  };
-
-  const focusedStyles = getFocusedItemStyles();
+  const displayCategoryName = (key: string) =>
+    key.startsWith(NEW_CATEGORY_PREFIX) ? '' : key;
 
   /* =========================
      EMPTY STATE
   ========================= */
 
-  if (!isNewList && !list) {
+  if (isLoadingList) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <ThemedView style={styles.container} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!isNewList && listNotFound) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <ThemedView style={styles.container}>
@@ -297,21 +391,19 @@ export default function GroceryListDetailScreen() {
           headerTitle: '',
           headerLeft: () => (
             <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons
-                name="arrow-back"
-                size={28}
-                color={colors.text.primary}
-              />
+              <Ionicons name="arrow-back" size={28} color={colors.text.primary} />
             </TouchableOpacity>
           ),
           headerRight: () => (
             <View style={styles.headerRight}>
               {isNewList ? (
-                <TouchableOpacity
-                  onPress={handleSave}
-                  disabled={isSaving}
-                >
-                  <ThemedText style={[styles.saveButton, { color: isSaving ? colors.text.tertiary : theme.brand.primary }]}>
+                <TouchableOpacity onPress={handleSave} disabled={isSaving}>
+                  <ThemedText
+                    style={[
+                      styles.saveButton,
+                      { color: isSaving ? colors.text.tertiary : theme.brand.primary },
+                    ]}
+                  >
                     {isSaving ? 'Saving...' : 'Save'}
                   </ThemedText>
                 </TouchableOpacity>
@@ -324,32 +416,27 @@ export default function GroceryListDetailScreen() {
                       color={isPinned ? theme.brand.red : colors.text.primary}
                     />
                   </TouchableOpacity>
-
                   <TouchableOpacity onPress={deleteList}>
-                    <Ionicons
-                      name="trash-outline"
-                      size={24}
-                      color={colors.text.primary}
-                    />
+                    <Ionicons name="trash-outline" size={24} color={colors.text.primary} />
                   </TouchableOpacity>
                 </>
               )}
             </View>
           ),
-          headerStyle: {
-            backgroundColor: colors.background,
-          },
+          headerStyle: { backgroundColor: colors.background },
         }}
       />
 
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: colors.background }}
-        edges={['bottom']}
-      >
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+        >
         <ThemedView style={styles.container}>
           {/* Date */}
           <ThemedText style={[styles.date, { color: colors.text.secondary }]}>
-            {isNewList ? 'Today' : list?.date}
+            {isNewList ? 'Today' : displayDate}
           </ThemedText>
 
           {/* Title */}
@@ -361,206 +448,178 @@ export default function GroceryListDetailScreen() {
             placeholderTextColor={colors.text.tertiary}
           />
 
-          {/* Categories */}
-          <FlatList
-            data={categories}
-            keyExtractor={(category) => category.id}
-            renderItem={({ item: category }) => (
-              <View style={styles.categorySection}>
-                {/* Category Header */}
-                <View style={styles.categoryHeader}>
-                  <TextInput
-                    value={categoryNameDrafts[category.name] ?? category.name}
-                    onChangeText={(text) =>
-                      setCategoryNameDrafts((prev) => ({
-                        ...prev,
-                        [category.name]: text,
-                      }))
-                    }
-                    onEndEditing={() => {
-                      const draft = categoryNameDrafts[category.name];
-                      if (draft && draft.trim() && draft.trim() !== category.name) {
-                        renameCategory(category.name, draft.trim());
-                      }
-                      setCategoryNameDrafts((prev) => {
-                        const next = { ...prev };
-                        delete next[category.name];
-                        return next;
-                      });
-                    }}
-                    style={[
-                      styles.categoryTitle,
-                      { color: colors.text.primary },
-                    ]}
-                    placeholder="Category"
-                    placeholderTextColor={colors.text.tertiary}
-                  />
+          {/* Content */}
+          <ScrollView
+            ref={scrollRef}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {categories.map((category) => (
+              <View key={category.id} style={styles.categorySection}>
 
-                  <TouchableOpacity
-                    onPress={() => toggleCategory(category.id)}
-                  >
-                    <Ionicons
-                      name={
-                        category.isCollapsed
-                          ? 'chevron-forward'
-                          : 'chevron-down'
+                {/* ── Named category header ── */}
+                {category.name !== null && (
+                  <View style={styles.categoryHeader}>
+                    <TextInput
+                      ref={(ref) => {
+                        if (category.name)
+                          categoryInputRefs.current[category.name] = ref;
+                      }}
+                      value={
+                        categoryNameDrafts[category.name] ??
+                        displayCategoryName(category.name)
                       }
-                      size={20}
-                      color={colors.text.secondary}
+                      onChangeText={(text) =>
+                        setCategoryNameDrafts((prev) => ({
+                          ...prev,
+                          [category.name!]: text,
+                        }))
+                      }
+                      onEndEditing={() => {
+                        const draft = categoryNameDrafts[category.name!];
+                        const trimmed = draft?.trim();
+                        const fallback = `Category ${
+                          categories.filter((c) => c.name !== null).length
+                        }`;
+                        const finalName = trimmed || fallback;
+
+                        if (finalName !== category.name) {
+                          renameCategory(category.name!, finalName);
+                        }
+
+                        setCategoryNameDrafts((prev) => {
+                          const next = { ...prev };
+                          delete next[category.name!];
+                          return next;
+                        });
+
+                        const firstItem = category.items[0];
+                        if (firstItem) {
+                          setTimeout(
+                            () => itemRefs.current[firstItem.id]?.focus(),
+                            100
+                          );
+                        }
+                      }}
+                      style={[styles.categoryTitle, { color: colors.text.primary }]}
+                      placeholder="Category name..."
+                      placeholderTextColor={colors.text.tertiary}
+                      returnKeyType="done"
                     />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Items */}
-                {!category.isCollapsed &&
-                  category.items.map((item) => (
-                    <View key={item.id} style={styles.itemRow}>
-                      {/* Checkbox */}
+                    <View style={styles.categoryHeaderActions}>
                       <TouchableOpacity
-                        onPress={() => toggleItem(item.id)}
-                        style={[
-                          styles.checkbox,
-                          { borderColor: colors.border.default },
-                          item.checked && { 
-                            backgroundColor: theme.brand.primary,
-                            borderColor: theme.brand.primary
-                          }
-                        ]}
+                        onPress={() => deleteCategory(category.name!)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
-                        {item.checked && (
-                          <Ionicons
-                            name="checkmark"
-                            size={18}
-                            color={colors.background}
-                          />
-                        )}
+                        <Ionicons name="trash-outline" size={18} color={colors.text.tertiary} />
                       </TouchableOpacity>
-
-                      {/* Editable Item */}
-                      <View style={{ flex: 1 }}>
-                        <TextInput
-                          ref={(ref) => {
-                            itemRefs.current[item.id] = ref;
-                          }}
-                          value={item.name}
-                          onChangeText={(text) =>
-                            updateItem(item.id, { name: text })
-                          }
-                          onFocus={() => setFocusedItemId(item.id)}
-                          onBlur={() => setFocusedItemId(null)}
-                          placeholder="Item name"
-                          placeholderTextColor={colors.text.tertiary}
-                          multiline={false}
-                          style={[
-                            styles.itemText,
-                            item.checked && styles.itemTextChecked,
-                            { color: colors.text.primary },
-                            // Apply text styles
-                            item.textStyle?.bold && { fontWeight: '700' },
-                            item.textStyle?.italic && { fontStyle: 'italic' },
-                            item.textStyle?.underline && { textDecorationLine: 'underline' },
-                            // Handle combination of underline with line-through
-                            item.checked && item.textStyle?.underline && { 
-                              textDecorationLine: 'underline line-through' 
-                            },
-                          ]}
-                          onSubmitEditing={() => addNewItem(category.name)}
-                          returnKeyType="next"
-                          blurOnSubmit={false}
+                      <TouchableOpacity onPress={() => toggleCategory(category.id)}>
+                        <Ionicons
+                          name={category.isCollapsed ? 'chevron-forward' : 'chevron-down'}
+                          size={20}
+                          color={colors.text.secondary}
                         />
-                      </View>
-
-                      {/* Pin */}
-                      <TouchableOpacity
-                        onPress={() => toggleItemPin(item.id)}
-                      >
-                        {item.isPinned && (
-                          <Ionicons
-                            name="pin"
-                            size={18}
-                            color={colors.text.primary}
-                          />
-                        )}
                       </TouchableOpacity>
                     </View>
-                  ))}
+                  </View>
+                )}
+
+                {/* ── Items ── */}
+                {!category.isCollapsed &&
+                  category.items.map((item) => {
+                    const inCategory = category.name !== null;
+                    return (
+                      <View key={item.id} style={styles.itemRow}>
+
+                        {/* Checkbox (category items) or bullet dot (flat items) */}
+                        {inCategory ? (
+                          <TouchableOpacity
+                            onPress={() => toggleItem(item.id)}
+                            style={[
+                              styles.checkbox,
+                              { borderColor: colors.border.default },
+                              item.checked && {
+                                backgroundColor: theme.brand.primary,
+                                borderColor: theme.brand.primary,
+                              },
+                            ]}
+                          >
+                            {item.checked && (
+                              <Ionicons name="checkmark" size={18} color={colors.background} />
+                            )}
+                          </TouchableOpacity>
+                        ) : (
+                          <View style={[styles.bulletDot, { backgroundColor: colors.text.tertiary }]} />
+                        )}
+
+                        <View style={{ flex: 1 }}>
+                          <TextInput
+                            ref={(ref) => {
+                              itemRefs.current[item.id] = ref;
+                            }}
+                            value={item.name}
+                            onChangeText={(text) => updateItem(item.id, { name: text })}
+                            placeholder="Item name"
+                            placeholderTextColor={colors.text.tertiary}
+                            multiline={false}
+                            style={[
+                              styles.itemText,
+                              item.checked && styles.itemTextChecked,
+                              { color: colors.text.primary },
+                              item.textStyle?.bold && { fontWeight: '700' },
+                              item.textStyle?.italic && { fontStyle: 'italic' },
+                              item.textStyle?.underline && { textDecorationLine: 'underline' },
+                              item.checked && item.textStyle?.underline && {
+                                textDecorationLine: 'underline line-through',
+                              },
+                            ]}
+                            onSubmitEditing={() => addNewItem(item.category ?? null)}
+                            onKeyPress={(e) => {
+                              if (
+                                e.nativeEvent.key === 'Backspace' &&
+                                item.name.length === 0
+                              ) {
+                                removeItem(item.id);
+                              }
+                            }}
+                            returnKeyType="next"
+                            blurOnSubmit={false}
+                          />
+                        </View>
+
+                        <TouchableOpacity onPress={() => toggleItemPin(item.id)}>
+                          {item.isPinned && (
+                            <Ionicons name="pin" size={18} color={colors.text.primary} />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+
+                {/* ── Ghost row: add subcategory ── */}
+                {category.name !== null && !category.isCollapsed && (
+                  <View>
+                    {/* Tap to create a brand new subcategory below */}
+                    <View style={[styles.itemRow, { opacity: 0.3 }]}>
+                      <View style={[styles.subcatGhostIcon, { borderColor: colors.border.default }]}>
+                        <Ionicons name="list-outline" size={13} color={colors.text.tertiary} />
+                      </View>
+                      <TextInput
+                        placeholder="Add subcategory..."
+                        placeholderTextColor={colors.text.tertiary}
+                        style={[styles.itemText, { color: colors.text.primary, fontSize: theme.typography.fontSizes.h4 - 1 }]}
+                        onFocus={() => addNewCategory()}
+                        blurOnSubmit={false}
+                      />
+                    </View>
+                  </View>
+                )}
               </View>
-            )}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
+            ))}
+          </ScrollView>
         </ThemedView>
-
-        {/* Custom Toolbar - only shows when keyboard is visible */}
-        {isKeyboardVisible && (
-          <View
-            style={[
-              styles.toolbarContainer,
-              {
-                bottom: keyboardHeight,
-                backgroundColor: colors.input.background,
-                borderTopColor: colors.border.light,
-              },
-            ]}
-          >
-            <TouchableOpacity style={styles.toolbarButton}>
-              <ThemedText style={[styles.toolbarText, { color: colors.text.tertiary }]}>Aa</ThemedText>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.toolbarButton}>
-              <Ionicons name="list" size={24} color={colors.text.tertiary} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[
-                styles.toolbarButton,
-                focusedStyles.bold && styles.toolbarButtonActive
-              ]}
-              onPress={() => toggleTextStyle('bold')}
-            >
-              <ThemedText style={[
-                styles.toolbarTextBold, 
-                { color: focusedStyles.bold ? theme.brand.primary : colors.text.tertiary }
-              ]}>
-                B
-              </ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[
-                styles.toolbarButton,
-                focusedStyles.underline && styles.toolbarButtonActive
-              ]}
-              onPress={() => toggleTextStyle('underline')}
-            >
-              <ThemedText style={[
-                styles.toolbarTextUnderline, 
-                { color: focusedStyles.underline ? theme.brand.primary : colors.text.tertiary }
-              ]}>
-                U
-              </ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[
-                styles.toolbarButton,
-                focusedStyles.italic && styles.toolbarButtonActive
-              ]}
-              onPress={() => toggleTextStyle('italic')}
-            >
-              <ThemedText style={[
-                styles.toolbarTextItalic, 
-                { color: focusedStyles.italic ? theme.brand.primary : colors.text.tertiary }
-              ]}>
-                I
-              </ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.toolbarButton}>
-              <Ionicons name="image-outline" size={24} color={colors.text.tertiary} />
-            </TouchableOpacity>
-          </View>
-        )}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </>
   );
@@ -607,6 +666,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
+  categoryHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    marginLeft: theme.spacing.sm,
+  },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -621,6 +686,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: theme.spacing.md,
   },
+  bulletDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: theme.spacing.md,
+    marginLeft: 9,
+    opacity: 0.4,
+  },
+  // Ghost icon for the "Add subcategory..." row — pill shape, slightly smaller than checkbox
+  subcatGhostIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.md,
+  },
   itemText: {
     fontSize: theme.typography.fontSizes.h4,
   },
@@ -630,47 +714,5 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: theme.spacing.xl * 3,
-  },
-  toolbarContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    borderTopWidth: 1,
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.lg,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderRadius: 15,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  toolbarButton: {
-    padding: theme.spacing.xs,
-  },
-  toolbarButtonActive: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    borderRadius: 6,
-  },
-  toolbarText: {
-    fontSize: 23,
-    fontWeight: '400',
-    color: '#000000',
-  },
-  toolbarTextBold: {
-    fontSize: 23,
-    fontWeight: '700',
-    color: '#000000',
-  },
-  toolbarTextUnderline: {
-    fontSize: 23,
-    fontWeight: '600',
-    color: '#000000',
-    textDecorationLine: 'underline',
-  },
-  toolbarTextItalic: {
-    fontSize: 23,
-    fontStyle: 'italic',
-    color: '#000000',
   },
 });
