@@ -4,8 +4,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useTheme } from "@/hooks/useTheme";
-import { BorderRadius, Spacing } from "@/constants/theme";
-import { theme } from "@/constants/theme";
+import { BorderRadius, Spacing, theme } from "@/constants/theme";
 
 interface FarmCardProps {
   name: string;
@@ -38,18 +37,20 @@ export default function FarmCard({
   isFavorite = false,
 }: FarmCardProps) {
   const { colors, isDark } = useTheme();
+  const transparentBg = { lightColor: "transparent", darkColor: "transparent" } as const;
 
   const safeProducts = products?.trim().length ? products : " "; // keeps reserved height even if empty
 
   return (
     <View style={styles.shadowWrapper}>
       <TouchableOpacity
-        style={[styles.farmCard, { backgroundColor: colors.card }]}
+        style={[styles.farmCard, { backgroundColor: colors.surface }]}
         onPress={onPress}
         activeOpacity={0.85}
       >
         {/* Image (fixed height, so all cards start the same) */}
         <ThemedView
+          {...transparentBg}
           style={[
             styles.farmImage,
             { backgroundColor: isDark ? colors.border.default : colors.border.light },
@@ -61,9 +62,9 @@ export default function FarmCard({
         </ThemedView>
 
         {/* Info */}
-        <ThemedView style={styles.farmInfo}>
+        <ThemedView {...transparentBg} style={styles.farmInfo}>
           {/* Header (clamped to 1 line) */}
-          <ThemedView style={styles.farmHeader}>
+          <ThemedView {...transparentBg} style={styles.farmHeader}>
             <ThemedText
               type="defaultSemiBold"
               style={styles.farmName}
@@ -83,7 +84,7 @@ export default function FarmCard({
           </ThemedView>
 
           {/* Rating row (distance clamped too) */}
-          <ThemedView style={styles.farmRating}>
+          <ThemedView {...transparentBg} style={styles.farmRating}>
             <IconSymbol name="star.fill" size={14} color="#FFD700" />
             <ThemedText style={[styles.ratingText, { color: colors.text.secondary }]}>
               {rating} ({reviews})
@@ -110,9 +111,12 @@ export default function FarmCard({
           </View>
 
           {/* Actions (fixed-ish height buttons) */}
-          <ThemedView style={styles.farmActions}>
+          <ThemedView {...transparentBg} style={styles.farmActions}>
             <TouchableOpacity
-              style={[styles.actionButton, { borderColor: colors.border.default }]}
+              style={[
+                styles.actionButton,
+                { borderColor: colors.border.default, backgroundColor: colors.background },
+              ]}
               onPress={onDirectionPress}
             >
               <IconSymbol name="location.fill" size={14} color={colors.icon.default} />
@@ -122,7 +126,10 @@ export default function FarmCard({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionButton, { borderColor: colors.border.default }]}
+              style={[
+                styles.actionButton,
+                { borderColor: colors.border.default, backgroundColor: colors.background },
+              ]}
               onPress={onSharePress}
             >
               <IconSymbol name="square.and.arrow.up" size={14} color={colors.icon.default} />
@@ -195,7 +202,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 
-  // ✅ This is what equalizes the card heights
   productsBlock: {
     minHeight: PRODUCTS_LINES * PRODUCTS_LINE_HEIGHT,
     marginBottom: Spacing.sm,
@@ -213,7 +219,7 @@ const styles = StyleSheet.create({
 
   actionButton: {
     flex: 1,
-    height: 32, // ✅ consistent button height
+    height: 32, 
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

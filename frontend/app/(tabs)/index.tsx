@@ -169,26 +169,26 @@ export default function HomeScreen() {
             <ThemedText style={{ color: colors.text.tertiary }}>No farms available yet.</ThemedText>
           ) : (
             <ScrollView
-  horizontal
-  showsHorizontalScrollIndicator={false}
-  style={styles.farmsScroll}
-  contentContainerStyle={{ gap: theme.spacing.md, paddingRight: theme.spacing.md }}
->
-  {farmsWithDistance.map((farm) => (
-          <View key={farm.id} style={{ width: 300 }}>
-                <FarmCard
-                  name={farm.name}
-                  rating={farm.rating}
-                  reviews={farm.reviews}
-                  distance={farm.distanceMi != null ? `${farm.distanceMi.toFixed(1)} mi` : '…'}
-                  products={farm.products}
-                  onPress={() => handleFarmPress(farm.id)}
-                  onDirectionPress={() => handleDirectionPress(farm.id)}
-                  onSharePress={() => handleSharePress(farm.id)}
-                />
-              </View>
-            ))}
-        </ScrollView>
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.farmsScroll}
+              contentContainerStyle={styles.farmsScrollContent}
+            >
+              {farmsWithDistance.map((farm) => (
+                <View key={farm.id} style={{ width: 300 }}>
+                  <FarmCard
+                    name={farm.name}
+                    rating={farm.rating}
+                    reviews={farm.reviews}
+                    distance={farm.distanceMi != null ? `${farm.distanceMi.toFixed(1)} mi` : '…'}
+                    products={farm.products}
+                    onPress={() => handleFarmPress(farm.id)}
+                    onDirectionPress={() => handleDirectionPress(farm.id)}
+                    onSharePress={() => handleSharePress(farm.id)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
           )}
         </ThemedView>
 
@@ -276,9 +276,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   farmsScroll: {
-  marginTop: theme.spacing.sm,
-  marginLeft: -theme.spacing.md,
-  paddingLeft: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    marginLeft: -theme.spacing.md,
+    paddingLeft: theme.spacing.md,
+  },
+  farmsScrollContent: {
+    gap: theme.spacing.md,
+    paddingRight: theme.spacing.md,
+    paddingVertical: 6,
   },
   homeGroceryCard: {
     marginBottom: 0,
