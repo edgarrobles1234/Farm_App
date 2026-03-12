@@ -14,7 +14,6 @@ import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { addDistanceAndSort } from "@/lib/location";
 import { useFarms } from "@/hooks/useFarms";
 
-// ✅ add these imports
 import { openDirections } from "@/lib/directions";
 import { formatAddress } from "@/lib/address";
 
