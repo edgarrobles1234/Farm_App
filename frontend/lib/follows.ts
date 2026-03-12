@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api";
+import { apiBaseUrl, apiRequest } from "@/lib/api";
 
 export type FollowCounts = {
   followers: number;
@@ -26,6 +26,39 @@ export async function getMe(accessToken: string): Promise<MeResponse> {
 
 export async function updateMyDescription(accessToken: string, description: string | null): Promise<MeResponse> {
   return apiRequest<MeResponse>("/me", { method: "PATCH", accessToken, body: { description } });
+}
+
+export async function updateMyAvatarUrl(accessToken: string, avatarUrl: string | null): Promise<MeResponse> {
+  return apiRequest<MeResponse>("/me", { method: "PATCH", accessToken, body: { avatar_url: avatarUrl } });
+}
+
+export async function uploadMyAvatar(
+  accessToken: string,
+  file: { uri: string; name: string; type: string }
+): Promise<MeResponse> {
+  const form = new FormData();
+  form.append("file", file as any);
+
+  const res = await fetch(`${apiBaseUrl}/me/avatar`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: form,
+  });
+
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try {
+      const data = (await res.json()) as { detail?: string };
+      if (data?.detail) detail = data.detail;
+    } catch {
+      // ignore
+    }
+    throw new Error(detail);
+  }
+
+  return (await res.json()) as MeResponse;
 }
 
 export async function searchUsers(accessToken: string, q: string, limit = 50): Promise<SearchUser[]> {

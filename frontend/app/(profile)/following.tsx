@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -127,7 +128,11 @@ export default function FollowingScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.userItem}>
-              <View style={[styles.profilePic, { backgroundColor: theme.neutral[400] }]} />
+              {item.avatar_url ? (
+                <Image source={{ uri: item.avatar_url }} style={styles.profilePic} contentFit="cover" />
+              ) : (
+                <View style={[styles.profilePic, { backgroundColor: theme.neutral[400] }]} />
+              )}
 
               <View style={styles.userInfo}>
                 <ThemedText style={[styles.userName, { color: colors.text.primary }]}>
@@ -236,4 +241,3 @@ const styles = StyleSheet.create({
     gap: 4,
   },
 });
-
