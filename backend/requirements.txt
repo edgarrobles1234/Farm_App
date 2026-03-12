@@ -3,3 +3,5 @@ uvicorn[standard]==0.30.6
 supabase==2.6.0
 python-dotenv==1.0.1
 PyJWT==2.9.0
+python-multipart==0.0.9
+Pillow==10.4.0

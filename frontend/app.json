@@ -37,6 +37,12 @@
       "expo-router",
       "expo-splash-screen",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Villam to access your photos to set a profile picture."
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Allow Villam to use your location to show nearby farms and your position on the map."

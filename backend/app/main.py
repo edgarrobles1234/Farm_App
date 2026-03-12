@@ -1,10 +1,12 @@
+from io import BytesIO
 import os
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from jwt import InvalidTokenError
+from PIL import Image
 from pydantic import BaseModel, Field
 from supabase import Client, create_client
 
@@ -91,6 +93,7 @@ class MeOut(BaseModel):
 
 class UpdateMeIn(BaseModel):
     description: str | None = Field(default=None, max_length=280)
+    avatar_url: str | None = Field(default=None, max_length=2048)
 
 
 class GroceryListItemIn(BaseModel):
@@ -185,10 +188,75 @@ def get_me(user_id: str = Depends(get_current_user_id)) -> MeOut:
 
 @app.patch("/me", response_model=MeOut)
 def update_me(body: UpdateMeIn, user_id: str = Depends(get_current_user_id)) -> MeOut:
-    supabase.table("profiles").upsert(
-        {"id": user_id, "description": body.description},
-        on_conflict="id",
-    ).execute()
+    payload = body.model_dump(exclude_unset=True)
+    payload["id"] = user_id
+    supabase.table("profiles").upsert(payload, on_conflict="id").execute()
+    return get_me(user_id)
+
+
+def _compress_avatar_to_jpeg(
+    image_bytes: bytes,
+    *,
+    max_size_bytes: int = 500 * 1024,
+    max_dim: int = 512,
+) -> bytes:
+    with Image.open(BytesIO(image_bytes)) as img:
+        img = img.convert("RGBA")
+        background = Image.new("RGBA", img.size, (255, 255, 255, 255))
+        background.alpha_composite(img)
+        img_rgb = background.convert("RGB")
+
+        img_rgb.thumbnail((max_dim, max_dim))
+
+        quality = 85
+        scale_attempts = 0
+        while True:
+            out = BytesIO()
+            img_rgb.save(out, format="JPEG", quality=quality, optimize=True, progressive=True)
+            data = out.getvalue()
+            if len(data) <= max_size_bytes:
+                return data
+
+            if quality > 45:
+                quality -= 10
+                continue
+
+            if scale_attempts >= 3:
+                return data
+
+            # reduce dimensions and try again
+            scale_attempts += 1
+            new_w = max(128, int(img_rgb.width * 0.85))
+            new_h = max(128, int(img_rgb.height * 0.85))
+            img_rgb = img_rgb.resize((new_w, new_h))
+            quality = 75
+
+
+@app.post("/me/avatar", response_model=MeOut)
+async def upload_avatar(
+    file: UploadFile = File(...), user_id: str = Depends(get_current_user_id)
+) -> MeOut:
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file type")
+
+    raw = await file.read()
+    if len(raw) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File too large")
+
+    try:
+        compressed = _compress_avatar_to_jpeg(raw)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unable to process image")
+
+    object_path = f"{user_id}/avatar_{int.from_bytes(os.urandom(4), 'big')}.jpg"
+    supabase.storage.from_("avatars").upload(
+        object_path,
+        compressed,
+        {"content-type": "image/jpeg", "cache-control": "3600"},
+    )
+
+    public_url = supabase.storage.from_("avatars").get_public_url(object_path)
+    supabase.table("profiles").upsert({"id": user_id, "avatar_url": public_url}, on_conflict="id").execute()
     return get_me(user_id)
 
 

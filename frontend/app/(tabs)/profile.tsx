@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/useTheme";
 import { theme } from "@/constants/theme";
@@ -16,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth-context";
-import { getMe, updateMyDescription, type ProfileRow } from "@/lib/follows";
+import { getMe, uploadMyAvatar, updateMyDescription, type ProfileRow } from "@/lib/follows";
 import { useFocusEffect } from "@react-navigation/native";
 import { RecipeCard } from '@/components/ui/recipes/recipecard';
 import { recipes } from "@/lib/recipes";
@@ -26,12 +28,14 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const accessToken = session?.access_token ?? null;
+  const userId = session?.user.id ?? null;
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [counts, setCounts] = useState({ followers: 0, following: 0 });
   const [loading, setLoading] = useState(false);
   const [editDescOpen, setEditDescOpen] = useState(false);
   const [descDraft, setDescDraft] = useState("");
   const [savingDesc, setSavingDesc] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const currentDescription = useMemo(() => profile?.description ?? "", [profile?.description]);
 
@@ -58,6 +62,47 @@ export default function ProfileScreen() {
       Alert.alert("Error", message);
     } finally {
       setSavingDesc(false);
+    }
+  };
+
+  const pickAndUploadAvatar = async () => {
+    if (!accessToken || !userId) return;
+    try {
+      setUploadingAvatar(true);
+
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permission needed", "Please allow photo library access to upload a profile picture.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      const asset = result.assets[0];
+      if (asset.fileSize != null && asset.fileSize > 10 * 1024 * 1024) {
+        Alert.alert("Too large", "Please choose an image under 10MB.");
+        return;
+      }
+
+      const next = await uploadMyAvatar(accessToken, {
+        uri: asset.uri,
+        name: "avatar.jpg",
+        type: asset.mimeType ?? "image/jpeg",
+      });
+      setProfile(next.profile);
+      setCounts(next.counts);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Unable to upload profile picture";
+      Alert.alert("Error", message);
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -106,23 +151,36 @@ export default function ProfileScreen() {
         />
 
         {/* Profile Section */}
-        <View style={styles.profileSection}>
-          {/* Profile Image */}
-          <View
-            style={[
-              styles.profileImageContainer,
-              { backgroundColor: colors.background },
-            ]}
-          >
-            <View
-              style={[
-                styles.profileImage,
-                { backgroundColor: theme.neutral[400] },
-              ]}
-            >
-              {/* Placeholder for profile image */}
-            </View>
-          </View>
+	        <View style={styles.profileSection}>
+	          {/* Profile Image */}
+	          <Pressable
+	            style={[
+	              styles.profileImageContainer,
+	              { backgroundColor: colors.background },
+	            ]}
+	            onPress={pickAndUploadAvatar}
+	            disabled={uploadingAvatar}
+	          >
+	            {profile?.avatar_url ? (
+	              <Image
+	                source={{ uri: profile.avatar_url }}
+	                style={styles.profileImage}
+	                contentFit="cover"
+	              />
+	            ) : (
+	              <View style={[styles.profileImage, { backgroundColor: theme.neutral[400] }]} />
+	            )}
+
+	            <View style={styles.avatarBadge}>
+	              {uploadingAvatar ? (
+	                <ThemedText style={{ color: theme.neutral.white, fontSize: 12 }}>
+	                  …
+	                </ThemedText>
+	              ) : (
+	                <Ionicons name="camera" size={16} color={theme.neutral.white} />
+	              )}
+	            </View>
+	          </Pressable>
 
           {/* Stats and Button Section */}
         <View style={styles.userFollowSection}>
@@ -332,6 +390,19 @@ const styles = StyleSheet.create({
     width: 75,
     height: 75,
     borderRadius: 50,
+  },
+  avatarBadge: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: theme.brand.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: theme.neutral.white,
   },
   statsButtonSection: {
     alignItems: "center",

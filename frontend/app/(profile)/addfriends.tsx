@@ -5,6 +5,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from "expo-image";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
@@ -113,7 +114,11 @@ export default function AddFriends() {
           renderItem={({ item }) => (
             <View style={styles.userItem}>
               {/* Profile Picture */}
-              <View style={[styles.profilePic, { backgroundColor: theme.neutral[400] }]} />
+              {item.avatar_url ? (
+                <Image source={{ uri: item.avatar_url }} style={styles.profilePic} contentFit="cover" />
+              ) : (
+                <View style={[styles.profilePic, { backgroundColor: theme.neutral[400] }]} />
+              )}
               
               {/* User Info */}
               <View style={styles.userInfo}>
