@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
@@ -22,6 +22,15 @@ import { mockGroceryLists } from '@/mockdata/GroceryList';
 import { openDirections } from '@/lib/directions';
 import { formatAddress } from '@/lib/address';
 
+import { supabase } from '@/lib/supabase'; // <-- adjust path if different
+
+type ProduceItem = {
+  id: string;
+  name: string;
+  category: string;
+  default_sold_by: string;
+};
+
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { session } = useAuth();
@@ -29,6 +38,11 @@ export default function HomeScreen() {
 
   const { coords: userCoords, locationText } = useCurrentLocation();
   const { data: farms = [], isLoading: farmsLoading, error: farmsError } = useFarms();
+
+  // In Season Now
+  const [currentProduce, setCurrentProduce] = useState<ProduceItem[]>([]);
+  const [produceLoading, setProduceLoading] = useState(false);
+  const [produceError, setProduceError] = useState<string | null>(null);
 
   const metadata = session?.user?.user_metadata as
     | { name?: string; full_name?: string; username?: string }
@@ -49,6 +63,7 @@ export default function HomeScreen() {
     .join('');
 
   const farmsWithDistance = addDistanceAndSort(farms, userCoords);
+
   const mostRecentGroceryList = useMemo(() => {
     const toTime = (dateStr: string) => {
       if (!dateStr) return 0;
@@ -63,6 +78,69 @@ export default function HomeScreen() {
 
     return [...mockGroceryLists].sort((a, b) => toTime(b.date) - toTime(a.date))[0] ?? null;
   }, []);
+
+  // Load current-month produce from Supabase
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCurrentProduce = async () => {
+      setProduceLoading(true);
+      setProduceError(null);
+
+      const month = new Date().getMonth() + 1; // 1-12
+
+      const { data, error } = await supabase
+        .from('produce_item_season_months')
+        .select(
+          `
+          produce_items!inner (
+            id,
+            name,
+            category,
+            default_sold_by,
+            is_available
+          )
+        `
+        )
+        .eq('month', month)
+        .eq('produce_items.is_available', true);
+
+      if (cancelled) return;
+
+      if (error) {
+        console.log('Produce load error:', error);
+        setProduceError('Could not load produce.');
+        setCurrentProduce([]);
+        setProduceLoading(false);
+        return;
+      }
+
+      const items =
+        (data ?? [])
+          .map((row: any) => row.produce_items)
+          .filter(Boolean)
+          .sort((a: ProduceItem, b: ProduceItem) => a.name.localeCompare(b.name)) ?? [];
+
+      setCurrentProduce(items);
+      setProduceLoading(false);
+    };
+
+    loadCurrentProduce();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Filter produce using the existing search bar
+  const filteredProduce = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return currentProduce;
+
+    return currentProduce.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+    );
+  }, [currentProduce, searchQuery]);
 
   const handleFarmPress = (farmId: number) => {
     console.log('Farm pressed:', farmId);
@@ -102,6 +180,10 @@ export default function HomeScreen() {
     // TODO: Navigate to recipe edit screen
   };
 
+  const handleProducePress = (produceId: string) => {
+    router.push(`/produce/${produceId}`);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView style={styles.container}>
@@ -132,7 +214,7 @@ export default function HomeScreen() {
           <Ionicons name="search" size={30} color={colors.text.tertiary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.input.text }]}
-            placeholder="Search farms, recipes..."
+            placeholder="Search produce, farms, recipes..."
             placeholderTextColor={colors.input.placeholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -148,6 +230,44 @@ export default function HomeScreen() {
             <GroceryListCard list={mostRecentGroceryList} style={styles.homeGroceryCard} />
           ) : (
             <ThemedText style={{ color: colors.text.tertiary }}>No grocery lists yet.</ThemedText>
+          )}
+        </ThemedView>
+
+        {/* In Season Now */}
+        <ThemedView style={styles.section}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            In Season Now
+          </ThemedText>
+
+          {produceLoading ? (
+            <ThemedText style={{ color: colors.text.tertiary }}>Loading produce…</ThemedText>
+          ) : produceError ? (
+            <ThemedText style={{ color: colors.text.tertiary }}>{produceError}</ThemedText>
+          ) : filteredProduce.length === 0 ? (
+            <ThemedText style={{ color: colors.text.tertiary }}>No seasonal produce found.</ThemedText>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.produceScroll}>
+              {filteredProduce.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.produceChip,
+                    {
+                      backgroundColor: colors.input.background,
+                      borderColor: colors.border.light,
+                    },
+                  ]}
+                  onPress={() => handleProducePress(item.id)}
+                >
+                  <ThemedText style={[styles.produceName, { color: colors.text.primary }]}>
+                    {item.name}
+                  </ThemedText>
+                  <ThemedText style={[styles.produceMeta, { color: colors.text.tertiary }]}>
+                    {item.category} • {item.default_sold_by}
+                  </ThemedText>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           )}
         </ThemedView>
 
@@ -197,11 +317,7 @@ export default function HomeScreen() {
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             Top Recipes of the Week
           </ThemedText>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.recipesScroll}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recipesScroll}>
             {recipes.map((recipe) => (
               <RecipeCard
                 key={recipe.id}
@@ -275,6 +391,32 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamily,
     marginBottom: theme.spacing.sm,
   },
+
+  // Produce
+  produceScroll: {
+    marginTop: theme.spacing.md,
+    marginLeft: -theme.spacing.md,
+    paddingLeft: theme.spacing.md,
+  },
+  produceChip: {
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    marginRight: theme.spacing.sm,
+    minWidth: 150,
+  },
+  produceName: {
+    fontSize: theme.typography.fontSizes.h4,
+    fontWeight: theme.typography.fontWeights.semibold,
+    fontFamily: theme.typography.fontFamily,
+  },
+  produceMeta: {
+    marginTop: 2,
+    fontSize: 12,
+    fontFamily: theme.typography.fontFamily,
+  },
+
   farmsScroll: {
     marginTop: theme.spacing.sm,
     marginLeft: -theme.spacing.md,
