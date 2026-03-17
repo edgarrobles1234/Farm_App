@@ -22,7 +22,7 @@ import { mockGroceryLists } from '@/mockdata/GroceryList';
 import { openDirections } from '@/lib/directions';
 import { formatAddress } from '@/lib/address';
 
-import { supabase } from '@/lib/supabase'; // <-- change path if needed
+import { supabase } from '@/lib/supabase'; // <-- adjust path if different
 
 type ProduceItem = {
   id: string;
@@ -39,7 +39,7 @@ export default function HomeScreen() {
   const { coords: userCoords, locationText } = useCurrentLocation();
   const { data: farms = [], isLoading: farmsLoading, error: farmsError } = useFarms();
 
-  // Current produce state
+  // In Season Now
   const [currentProduce, setCurrentProduce] = useState<ProduceItem[]>([]);
   const [produceLoading, setProduceLoading] = useState(false);
   const [produceError, setProduceError] = useState<string | null>(null);
@@ -179,9 +179,7 @@ export default function HomeScreen() {
   };
 
   const handleProducePress = (produceId: string) => {
-    console.log('Produce pressed:', produceId);
-    // Example:
-    // router.push(`/produce/${produceId}`);
+    router.push(`/produce/${produceId}`);
   };
 
   return (
@@ -233,7 +231,7 @@ export default function HomeScreen() {
           )}
         </ThemedView>
 
-        {/* Current Produce */}
+        {/* In Season Now */}
         <ThemedView style={styles.section}>
           <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
             In Season Now
@@ -386,7 +384,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
 
-  // Produce section
+  // Produce
   produceScroll: {
     marginTop: theme.spacing.md,
     marginLeft: -theme.spacing.md,
