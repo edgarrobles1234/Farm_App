@@ -147,21 +147,23 @@ export default function HomeScreen() {
     // TODO: Navigate to farm detail screen
   };
 
-  // opens Apple Maps (iOS) / Google Maps (Android)
   const handleDirectionPress = async (farmId: number) => {
-    const farm = farms.find((f) => f.id === farmId);
-    if (!farm) return;
+  const farm = farms.find((f) => f.id === farmId);
+  if (!farm) return;
 
-    const destination = formatAddress(farm);
-    const finalDest =
-      destination.trim().length > 0 ? destination : `${farm.latitude},${farm.longitude}`;
+  const hasRealAddress =
+    !!farm.street?.trim() && (!!farm.city?.trim() || !!farm.postal_code?.trim());
 
-    try {
-      await openDirections(finalDest);
-    } catch (e) {
-      console.log('Could not open directions', e);
-    }
-  };
+  const finalDest = hasRealAddress
+    ? formatAddress(farm)
+    : `${farm.latitude},${farm.longitude}`;
+
+  try {
+    await openDirections(finalDest);
+  } catch (e) {
+    console.log("Could not open directions", e);
+  }
+};
 
   const handleSharePress = (farmId: number) => {
     console.log('Share pressed:', farmId);
@@ -286,19 +288,25 @@ export default function HomeScreen() {
           ) : farmsWithDistance.length === 0 ? (
             <ThemedText style={{ color: colors.text.tertiary }}>No farms available yet.</ThemedText>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.farmsScroll}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.farmsScroll}
+              contentContainerStyle={styles.farmsScrollContent}
+            >
               {farmsWithDistance.map((farm) => (
-                <FarmCard
-                  key={farm.id}
-                  name={farm.name}
-                  rating={farm.rating}
-                  reviews={farm.reviews}
-                  distance={farm.distanceMi != null ? `${farm.distanceMi.toFixed(1)} mi` : '…'}
-                  products={farm.products}
-                  onPress={() => handleFarmPress(farm.id)}
-                  onDirectionPress={() => handleDirectionPress(farm.id)}
-                  onSharePress={() => handleSharePress(farm.id)}
-                />
+                <View key={farm.id} style={{ width: 300 }}>
+                  <FarmCard
+                    name={farm.name}
+                    rating={farm.rating}
+                    reviews={farm.reviews}
+                    distance={farm.distanceMi != null ? `${farm.distanceMi.toFixed(1)} mi` : '…'}
+                    products={farm.products}
+                    onPress={() => handleFarmPress(farm.id)}
+                    onDirectionPress={() => handleDirectionPress(farm.id)}
+                    onSharePress={() => handleSharePress(farm.id)}
+                  />
+                </View>
               ))}
             </ScrollView>
           )}
@@ -410,9 +418,14 @@ const styles = StyleSheet.create({
   },
 
   farmsScroll: {
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.sm,
     marginLeft: -theme.spacing.md,
     paddingLeft: theme.spacing.md,
+  },
+  farmsScrollContent: {
+    gap: theme.spacing.md,
+    paddingRight: theme.spacing.md,
+    paddingVertical: 6,
   },
   homeGroceryCard: {
     marginBottom: 0,

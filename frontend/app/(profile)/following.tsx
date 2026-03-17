@@ -1,31 +1,40 @@
-import { StyleSheet, View, TextInput, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import React, { useEffect, useMemo, useState } from 'react';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useTheme } from '@/hooks/useTheme';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '@/constants/theme';
-import * as Haptics from 'expo-haptics';
-import { followUser, searchUsers, unfollowUser, type SearchUser } from '@/lib/follows';
-import { useAuth } from '@/context/auth-context';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function AddFriends() {
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { theme } from "@/constants/theme";
+import { useAuth } from "@/context/auth-context";
+import { useTheme } from "@/hooks/useTheme";
+import { followUser, listFollowing, unfollowUser, type SearchUser } from "@/lib/follows";
+
+export default function FollowingScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { session } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [profiles, setProfiles] = useState<SearchUser[]>([]);
-  const [loading, setLoading] = useState(false);
   const accessToken = session?.access_token ?? null;
 
+  const [searchQuery, setSearchQuery] = useState("");
   const normalizedQuery = useMemo(() => searchQuery.trim(), [searchQuery]);
+
+  const [users, setUsers] = useState<SearchUser[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    console.log("Heading back to profile")
     router.back();
   };
 
@@ -37,12 +46,12 @@ export default function AddFriends() {
 
     const timeout = setTimeout(async () => {
       try {
-        const results = await searchUsers(accessToken, normalizedQuery, 50);
+        const results = await listFollowing(accessToken, normalizedQuery, 200);
         if (!isActive) return;
-        setProfiles(results);
+        setUsers(results);
       } catch (e) {
         if (!isActive) return;
-        const message = e instanceof Error ? e.message : "Unable to load users";
+        const message = e instanceof Error ? e.message : "Unable to load following";
         Alert.alert("Error", message);
       } finally {
         if (!isActive) return;
@@ -58,18 +67,18 @@ export default function AddFriends() {
 
   const toggleFollow = async (targetUserId: string) => {
     if (!accessToken) return;
-    const current = profiles.find((p) => p.id === targetUserId);
-    const currentlyFollowing = current?.is_following ?? false;
+    const current = users.find((u) => u.id === targetUserId);
+    const currentlyFollowing = current?.is_following ?? true;
 
     try {
       if (currentlyFollowing) {
         await unfollowUser(accessToken, targetUserId);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setProfiles((prev) => prev.map((p) => (p.id === targetUserId ? { ...p, is_following: false } : p)));
+        setUsers((prev) => prev.filter((u) => u.id !== targetUserId));
       } else {
         await followUser(accessToken, targetUserId);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setProfiles((prev) => prev.map((p) => (p.id === targetUserId ? { ...p, is_following: true } : p)));
+        setUsers((prev) => prev.map((u) => (u.id === targetUserId ? { ...u, is_following: true } : u)));
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unable to update follow";
@@ -78,49 +87,53 @@ export default function AddFriends() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
       <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Back Button */}
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color={colors.text.primary} />
         </TouchableOpacity>
 
-        {/* Title */}
         <ThemedText type="title" style={[styles.title, { color: colors.text.primary }]}>
-          Find people to follow
+          Following
         </ThemedText>
 
-        {/* Search Bar */}
-        <View style={[styles.searchContainer, { backgroundColor: colors.input.background, borderColor: colors.border.light, borderWidth: 1 }]}>
-            <Ionicons name="search" size={30} color={colors.text.tertiary} style={styles.searchIcon} />
-            <TextInput
-                style={[styles.searchInput, { color: colors.input.text }]}
-                placeholder="Search people..."
-                placeholderTextColor={colors.input.placeholder}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-            />
+        <View
+          style={[
+            styles.searchContainer,
+            {
+              backgroundColor: colors.input.background,
+              borderColor: colors.border.light,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <Ionicons name="search" size={30} color={colors.text.tertiary} style={styles.searchIcon} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.input.text }]}
+            placeholder="Search following..."
+            placeholderTextColor={colors.input.placeholder}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
 
-        {/* People List */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color={theme.brand.primary} />
           </View>
         ) : null}
+
         <FlatList
-          data={profiles}
+          data={users}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.userItem}>
-              {/* Profile Picture */}
               {item.avatar_url ? (
                 <Image source={{ uri: item.avatar_url }} style={styles.profilePic} contentFit="cover" />
               ) : (
                 <View style={[styles.profilePic, { backgroundColor: theme.neutral[400] }]} />
               )}
-              
-              {/* User Info */}
+
               <View style={styles.userInfo}>
                 <ThemedText style={[styles.userName, { color: colors.text.primary }]}>
                   {item.full_name ?? item.username ?? "Unknown user"}
@@ -130,27 +143,27 @@ export default function AddFriends() {
                 </ThemedText>
               </View>
 
-              {/* Follow Button */}
               <TouchableOpacity
                 onPress={() => toggleFollow(item.id)}
                 style={[
-                  styles.addButton,
+                  styles.followButton,
                   {
-                    backgroundColor: item.is_following
-                      ? theme.brand.darkerOrange
-                      : theme.brand.primary,
+                    backgroundColor: theme.brand.darkerOrange,
                   },
                 ]}
               >
-                <Ionicons
-                  name={item.is_following ? "checkmark" : "person-add"}
-                  size={21}
-                  color={theme.neutral.white}
-                />
+                <Ionicons name="checkmark" size={21} color={theme.neutral.white} />
               </TouchableOpacity>
             </View>
           )}
           contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            loading ? null : (
+              <ThemedText style={{ color: colors.text.tertiary }}>
+                You’re not following anyone yet.
+              </ThemedText>
+            )
+          }
         />
       </ThemedView>
     </SafeAreaView>
@@ -172,8 +185,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
@@ -187,16 +200,16 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.h4,
     fontFamily: theme.typography.fontFamily,
   },
-  listContent: {
-    paddingBottom: theme.spacing.lg,
-  },
   loadingContainer: {
     paddingVertical: theme.spacing.sm,
     alignItems: "center",
   },
+  listContent: {
+    paddingBottom: theme.spacing.lg,
+  },
   userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
@@ -219,17 +232,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontFamily: theme.typography.fontFamily,
   },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  followButton: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.md,
     gap: 4,
-  },
-  addButtonText: {
-    fontSize: theme.typography.fontSizes.h3,
-    fontWeight: theme.typography.fontWeights.bold,
-    fontFamily: theme.typography.fontFamily,
   },
 });

@@ -1,11 +1,10 @@
-import React from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useTheme } from '@/hooks/useTheme';
-import { BorderRadius, Spacing } from '@/constants/theme';
-import { theme } from '@/constants/theme';
+import React from "react";
+import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useTheme } from "@/hooks/useTheme";
+import { BorderRadius, Spacing, theme } from "@/constants/theme";
 
 interface FarmCardProps {
   name: string;
@@ -21,6 +20,9 @@ interface FarmCardProps {
   isFavorite?: boolean;
 }
 
+const PRODUCTS_LINES = 2;
+const PRODUCTS_LINE_HEIGHT = 14; // tweak if you want tighter/looser
+
 export default function FarmCard({
   name,
   rating,
@@ -35,89 +37,90 @@ export default function FarmCard({
   isFavorite = false,
 }: FarmCardProps) {
   const { colors, isDark } = useTheme();
+  const transparentBg = { lightColor: "transparent", darkColor: "transparent" } as const;
+
+  const safeProducts = products?.trim().length ? products : " "; // keeps reserved height even if empty
 
   return (
     <View style={styles.shadowWrapper}>
       <TouchableOpacity
-        style={[styles.farmCard, { backgroundColor: colors.card }]}
+        style={[styles.farmCard, { backgroundColor: colors.surface }]}
         onPress={onPress}
         activeOpacity={0.85}
       >
-        {/* Image */}
+        {/* Image (fixed height, so all cards start the same) */}
         <ThemedView
+          {...transparentBg}
           style={[
             styles.farmImage,
-            {
-              backgroundColor: isDark
-                ? colors.border.default
-                : colors.border.light,
-            },
+            { backgroundColor: isDark ? colors.border.default : colors.border.light },
           ]}
         >
-          {imageUrl && (
+          {imageUrl ? (
             <Image source={{ uri: imageUrl }} style={styles.farmImageContent} />
-          )}
+          ) : null}
         </ThemedView>
 
         {/* Info */}
-        <ThemedView style={styles.farmInfo}>
-          <ThemedView style={styles.farmHeader}>
-            <ThemedText type="defaultSemiBold" style={styles.farmName}>
+        <ThemedView {...transparentBg} style={styles.farmInfo}>
+          {/* Header (clamped to 1 line) */}
+          <ThemedView {...transparentBg} style={styles.farmHeader}>
+            <ThemedText
+              type="defaultSemiBold"
+              style={styles.farmName}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {name}
             </ThemedText>
 
-            <TouchableOpacity onPress={onFavoritePress}>
+            <TouchableOpacity onPress={onFavoritePress} hitSlop={8}>
               <IconSymbol
-                name={isFavorite ? 'heart.fill' : 'heart'}
+                name={isFavorite ? "heart.fill" : "heart"}
                 size={18}
-                color={
-                  isFavorite
-                    ? colors.text.primary
-                    : colors.icon.default
-                }
+                color={isFavorite ? colors.text.primary : colors.icon.default}
               />
             </TouchableOpacity>
           </ThemedView>
 
-          <ThemedView style={styles.farmRating}>
+          {/* Rating row (distance clamped too) */}
+          <ThemedView {...transparentBg} style={styles.farmRating}>
             <IconSymbol name="star.fill" size={14} color="#FFD700" />
-            <ThemedText
-              style={[styles.ratingText, { color: colors.text.secondary }]}
-            >
+            <ThemedText style={[styles.ratingText, { color: colors.text.secondary }]}>
               {rating} ({reviews})
             </ThemedText>
+
             <ThemedText
               style={[styles.distanceText, { color: colors.text.tertiary }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
               📍 {distance}
             </ThemedText>
           </ThemedView>
 
-          <ThemedText
-            style={[styles.farmProducts, { color: colors.text.tertiary }]}
-          >
-            {products}
-          </ThemedText>
+          {/* Products: reserve exactly 2 lines worth of height */}
+          <View style={styles.productsBlock}>
+            <ThemedText
+              style={[styles.farmProducts, { color: colors.text.tertiary }]}
+              numberOfLines={PRODUCTS_LINES}
+              ellipsizeMode="tail"
+            >
+              {safeProducts}
+            </ThemedText>
+          </View>
 
-          <ThemedView style={styles.farmActions}>
+          {/* Actions (fixed-ish height buttons) */}
+          <ThemedView {...transparentBg} style={styles.farmActions}>
             <TouchableOpacity
               style={[
                 styles.actionButton,
-                { borderColor: colors.border.default },
+                { borderColor: colors.border.default, backgroundColor: colors.background },
               ]}
               onPress={onDirectionPress}
             >
-              <IconSymbol
-                name="location.fill"
-                size={14}
-                color={colors.icon.default}
-              />
-              <ThemedText
-                style={[
-                  styles.actionText,
-                  { color: colors.text.secondary },
-                ]}
-              >
+              <IconSymbol name="location.fill" size={14} color={colors.icon.default} />
+              <ThemedText style={[styles.actionText, { color: colors.text.secondary }]}>
                 Direction
               </ThemedText>
             </TouchableOpacity>
@@ -125,21 +128,12 @@ export default function FarmCard({
             <TouchableOpacity
               style={[
                 styles.actionButton,
-                { borderColor: colors.border.default },
+                { borderColor: colors.border.default, backgroundColor: colors.background },
               ]}
               onPress={onSharePress}
             >
-              <IconSymbol
-                name="square.and.arrow.up"
-                size={14}
-                color={colors.icon.default}
-              />
-              <ThemedText
-                style={[
-                  styles.actionText,
-                  { color: colors.text.secondary },
-                ]}
-              >
+              <IconSymbol name="square.and.arrow.up" size={14} color={colors.icon.default} />
+              <ThemedText style={[styles.actionText, { color: colors.text.secondary }]}>
                 Share
               </ThemedText>
             </TouchableOpacity>
@@ -152,30 +146,27 @@ export default function FarmCard({
 
 const styles = StyleSheet.create({
   shadowWrapper: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowRadius: 4,                      
-    shadowOpacity: 0.25,                  
-    elevation: 4,                          
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 4,
+    shadowOpacity: 0.25,
+    elevation: 4,
     borderRadius: BorderRadius.lg,
-    marginRight: Spacing.md,
-    marginBottom: 6,                       
   },
 
   farmCard: {
-    width: 300,
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden', // OK here (keeps image corners rounded)
+    overflow: "hidden",
   },
 
   farmImage: {
-    height: 120,
-    width: '100%',
+    height: 110,
+    width: "100%",
   },
 
   farmImageContent: {
-    height: '100%',
-    width: '100%',
+    height: "100%",
+    width: "100%",
   },
 
   farmInfo: {
@@ -183,20 +174,20 @@ const styles = StyleSheet.create({
   },
 
   farmHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.xs,
   },
 
   farmName: {
     flex: 1,
+    marginRight: Spacing.sm,
     fontSize: theme.typography.fontSizes.h4,
   },
 
   farmRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.xs,
   },
 
@@ -208,22 +199,30 @@ const styles = StyleSheet.create({
   distanceText: {
     fontSize: 12,
     marginLeft: Spacing.sm,
+    flexShrink: 1,
+  },
+
+  productsBlock: {
+    minHeight: PRODUCTS_LINES * PRODUCTS_LINE_HEIGHT,
+    marginBottom: Spacing.sm,
   },
 
   farmProducts: {
     fontSize: 11,
-    marginBottom: Spacing.sm,
+    lineHeight: PRODUCTS_LINE_HEIGHT,
   },
 
   farmActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.sm,
   },
 
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.xs,
+    flex: 1,
+    height: 32, 
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
