@@ -171,13 +171,11 @@ export default function HomeScreen() {
   };
 
   const handleRecipePress = (recipeId: string) => {
-    console.log('Recipe pressed:', recipeId);
-    // TODO: Navigate to recipe detail screen
+    router.push(`/recipe/${recipeId}`);
   };
 
   const handleEditRecipePress = (recipeId: string) => {
-    console.log('Edit recipe:', recipeId);
-    // TODO: Navigate to recipe edit screen
+    router.push('/recipe/new');
   };
 
   const handleProducePress = (produceId: string) => {
@@ -314,9 +312,16 @@ export default function HomeScreen() {
 
         {/* Top Recipes */}
         <ThemedView style={[styles.section, { marginBottom: 80 }]}>
-          <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
-            Top Recipes of the Week
-          </ThemedText>
+          <View style={styles.sectionHeaderRow}>
+            <ThemedText style={[styles.sectionTitle, { color: colors.text.primary }]}>
+              Top Recipes of the Week
+            </ThemedText>
+            <TouchableOpacity onPress={() => router.push('/recipe/recipes')} activeOpacity={0.7}>
+              <ThemedText style={[styles.sectionLink, { color: theme.brand.primary }]}>
+                Browse All
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recipesScroll}>
             {recipes.map((recipe) => (
               <RecipeCard
@@ -385,11 +390,22 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: theme.spacing.lg,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
   sectionTitle: {
     fontSize: theme.typography.fontSizes.h3,
     fontWeight: theme.typography.fontWeights.bold,
     fontFamily: theme.typography.fontFamily,
     marginBottom: theme.spacing.sm,
+  },
+  sectionLink: {
+    fontSize: 14,
+    fontWeight: theme.typography.fontWeights.semibold,
+    fontFamily: theme.typography.fontFamily,
   },
 
   // Produce

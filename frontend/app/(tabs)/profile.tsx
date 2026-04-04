@@ -297,8 +297,7 @@ export default function ProfileScreen() {
               key={recipe.id}
               {...recipe}
               onPress={() => {
-                console.log('Recipe pressed:', recipe.id);
-                // Navigate to recipe detail
+                router.push(`/recipe/${recipe.id}`);
               }}
               onEditPress={() => {
                 console.log('Edit recipe:', recipe.id);
