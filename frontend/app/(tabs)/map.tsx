@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 import { useTheme } from "@/hooks/useTheme";
 import { theme } from "@/constants/theme";
@@ -91,8 +92,7 @@ export default function MapTab() {
   };
 
   const handleFarmPress = (farmId: number) => {
-    console.log("Farm pressed:", farmId);
-    focusFarm(farmId);
+    router.push(`/farm/${farmId}`);
   };
 
   const handleDirectionPress = async (farmId: number) => {

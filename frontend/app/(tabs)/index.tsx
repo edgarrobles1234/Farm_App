@@ -143,8 +143,7 @@ export default function HomeScreen() {
   }, [currentProduce, searchQuery]);
 
   const handleFarmPress = (farmId: number) => {
-    console.log('Farm pressed:', farmId);
-    // TODO: Navigate to farm detail screen
+    router.push(`/farm/${farmId}`);
   };
 
   const handleDirectionPress = async (farmId: number) => {
