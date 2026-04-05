@@ -282,15 +282,27 @@ export default function ProduceDetailScreen() {
                       </ThemedText>
                     </View>
 
-                    <TouchableOpacity
-                      onPress={() => handleDirections(l.farms)}
-                      style={[styles.dirBtn, { borderColor: colors.border.light }]}
-                    >
-                      <Ionicons name="navigate" size={18} color={colors.text.primary} />
-                      <ThemedText style={{ color: colors.text.primary, marginLeft: 6 }}>
-                        Directions
-                      </ThemedText>
-                    </TouchableOpacity>
+                    <View style={styles.actionColumn}>
+                      <TouchableOpacity
+                        onPress={() => router.push(`/farm/${l.farms.id}`)}
+                        style={[styles.viewFarmBtn, { borderColor: colors.border.light }]}
+                      >
+                        <Ionicons name="storefront-outline" size={18} color={colors.text.primary} />
+                        <ThemedText style={{ color: colors.text.primary, marginLeft: 6 }}>
+                          View Farm
+                        </ThemedText>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => handleDirections(l.farms)}
+                        style={[styles.dirBtn, { borderColor: colors.border.light }]}
+                      >
+                        <Ionicons name="navigate" size={18} color={colors.text.primary} />
+                        <ThemedText style={{ color: colors.text.primary, marginLeft: 6 }}>
+                          Directions
+                        </ThemedText>
+                      </TouchableOpacity>
+                    </View>
                   </ThemedView>
                 ))
               )}
@@ -345,7 +357,18 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeights.semibold,
     fontFamily: theme.typography.fontFamily,
   },
+  actionColumn: {
+    gap: theme.spacing.sm,
+  },
   dirBtn: {
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewFarmBtn: {
     borderWidth: 1,
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing.md,
