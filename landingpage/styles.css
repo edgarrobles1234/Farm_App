@@ -1,0 +1,221 @@
+:root {
+  color-scheme: light;
+  --bg: #f8f3eb;
+  --surface: #fff;
+  --surface-strong: #f2e8dc;
+  --text: #1f1a17;
+  --muted: #6b655f;
+  --accent: #fe9801;
+  --accent-soft: #ffeed8;
+  --border: rgba(31, 26, 23, 0.08);
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  line-height: 1.6;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.page-shell {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 3rem 0 2.5rem;
+}
+
+.hero-section {
+  text-align: center;
+  padding: 2rem 0 4rem;
+}
+
+.eyebrow {
+  margin: 0 auto 0.75rem;
+  color: var(--muted);
+  font-size: 0.98rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero-section h1 {
+  margin: 0;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: clamp(3rem, 5vw, 4.75rem);
+  line-height: 0.95;
+}
+
+.hero-text {
+  margin: 1.4rem auto 0;
+  max-width: 42rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.hero-brand-card {
+  margin: 3rem auto 0;
+  width: fit-content;
+  text-align: center;
+}
+
+.brand-logo {
+  width: clamp(10rem, 18vw, 16rem);
+  border-radius: 1.5rem;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.08);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  padding: 0.8rem 1.35rem;
+  border: 1px solid rgba(254, 152, 1, 0.15);
+  border-radius: 999px;
+  color: #bf6500;
+  background: rgba(254, 152, 1, 0.09);
+  font-weight: 600;
+}
+
+.features-section {
+  padding-bottom: 3rem;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-family: "Georgia", serif;
+  font-size: clamp(2.2rem, 3vw, 3rem);
+}
+
+.section-header p {
+  margin: 1rem auto 0;
+  max-width: 38rem;
+  color: var(--muted);
+}
+
+.cards-grid {
+  display: grid;
+  gap: 1.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.6rem;
+  padding: 2rem;
+}
+
+.feature-card--buyers {
+  border-color: rgba(254, 152, 1, 0.18);
+}
+
+.feature-card--sellers {
+  border-color: rgba(41, 94, 48, 0.12);
+}
+
+.feature-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+  margin-bottom: 1.8rem;
+}
+
+.feature-card--sellers .feature-label {
+  color: #3a6a37;
+}
+
+.feature-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.6rem;
+}
+
+.feature-step:last-child {
+  margin-bottom: 0;
+}
+
+.step-number {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: var(--accent-soft);
+  color: #b25e00;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.feature-card--sellers .step-number {
+  background: #eaf2e6;
+  color: #376334;
+}
+
+.feature-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.feature-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.96rem;
+}
+
+.footer {
+  text-align: center;
+  padding: 2rem 0 3rem;
+  color: var(--muted);
+}
+
+.footer-brand {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.footer p {
+  margin: 0.5rem auto 0;
+  max-width: 28rem;
+}
+
+@media (max-width: 640px) {
+  .page-shell {
+    padding-top: 2rem;
+  }
+
+  .feature-card {
+    padding: 1.5rem;
+  }
+}
